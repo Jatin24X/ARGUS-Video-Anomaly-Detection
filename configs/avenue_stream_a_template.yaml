@@ -1,0 +1,21 @@
+inherits: default
+
+data:
+  dataset: avenue
+  num_scenes: 1
+  fps: 25
+  train_split: train
+  val_split: val
+  test_split: test
+
+stream_a:
+  beta: 1.0
+
+training:
+  model_selection_metric: normal_holdout_score
+
+evaluation:
+  signal_kind: score_norm
+  sigma_strategy: single_sigma
+  single_sigma_index: 0
+  smoothing_sigma: 20

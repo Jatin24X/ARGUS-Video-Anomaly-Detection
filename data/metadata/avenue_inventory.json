@@ -1,0 +1,269 @@
+{
+  "dataset": "avenue",
+  "dataset_root": "C:\\Users\\jatin\\OneDrive\\Desktop\\SD-MAE\\Avenue_Extracted\\Avenue Dataset",
+  "train_videos": [
+    {
+      "video_name": "train_01",
+      "source_video_name": "01",
+      "split": "train",
+      "num_frames": 1364,
+      "relative_path": "train/frames/01"
+    },
+    {
+      "video_name": "train_02",
+      "source_video_name": "02",
+      "split": "train",
+      "num_frames": 1511,
+      "relative_path": "train/frames/02"
+    },
+    {
+      "video_name": "train_03",
+      "source_video_name": "03",
+      "split": "train",
+      "num_frames": 1487,
+      "relative_path": "train/frames/03"
+    },
+    {
+      "video_name": "train_04",
+      "source_video_name": "04",
+      "split": "train",
+      "num_frames": 1511,
+      "relative_path": "train/frames/04"
+    },
+    {
+      "video_name": "train_05",
+      "source_video_name": "05",
+      "split": "train",
+      "num_frames": 815,
+      "relative_path": "train/frames/05"
+    },
+    {
+      "video_name": "train_06",
+      "source_video_name": "06",
+      "split": "train",
+      "num_frames": 1511,
+      "relative_path": "train/frames/06"
+    },
+    {
+      "video_name": "train_07",
+      "source_video_name": "07",
+      "split": "train",
+      "num_frames": 1099,
+      "relative_path": "train/frames/07"
+    },
+    {
+      "video_name": "train_08",
+      "source_video_name": "08",
+      "split": "train",
+      "num_frames": 1017,
+      "relative_path": "train/frames/08"
+    },
+    {
+      "video_name": "train_09",
+      "source_video_name": "09",
+      "split": "train",
+      "num_frames": 1391,
+      "relative_path": "train/frames/09"
+    },
+    {
+      "video_name": "train_10",
+      "source_video_name": "10",
+      "split": "train",
+      "num_frames": 1223,
+      "relative_path": "train/frames/10"
+    },
+    {
+      "video_name": "train_11",
+      "source_video_name": "11",
+      "split": "train",
+      "num_frames": 781,
+      "relative_path": "train/frames/11"
+    },
+    {
+      "video_name": "train_12",
+      "source_video_name": "12",
+      "split": "train",
+      "num_frames": 145,
+      "relative_path": "train/frames/12"
+    },
+    {
+      "video_name": "train_13",
+      "source_video_name": "13",
+      "split": "train",
+      "num_frames": 366,
+      "relative_path": "train/frames/13"
+    },
+    {
+      "video_name": "train_14",
+      "source_video_name": "14",
+      "split": "train",
+      "num_frames": 510,
+      "relative_path": "train/frames/14"
+    },
+    {
+      "video_name": "train_15",
+      "source_video_name": "15",
+      "split": "train",
+      "num_frames": 353,
+      "relative_path": "train/frames/15"
+    },
+    {
+      "video_name": "train_16",
+      "source_video_name": "16",
+      "split": "train",
+      "num_frames": 244,
+      "relative_path": "train/frames/16"
+    }
+  ],
+  "test_videos": [
+    {
+      "video_name": "test_01",
+      "source_video_name": "01",
+      "split": "test",
+      "num_frames": 1439,
+      "relative_path": "test/frames/01"
+    },
+    {
+      "video_name": "test_02",
+      "source_video_name": "02",
+      "split": "test",
+      "num_frames": 1211,
+      "relative_path": "test/frames/02"
+    },
+    {
+      "video_name": "test_03",
+      "source_video_name": "03",
+      "split": "test",
+      "num_frames": 923,
+      "relative_path": "test/frames/03"
+    },
+    {
+      "video_name": "test_04",
+      "source_video_name": "04",
+      "split": "test",
+      "num_frames": 947,
+      "relative_path": "test/frames/04"
+    },
+    {
+      "video_name": "test_05",
+      "source_video_name": "05",
+      "split": "test",
+      "num_frames": 1007,
+      "relative_path": "test/frames/05"
+    },
+    {
+      "video_name": "test_06",
+      "source_video_name": "06",
+      "split": "test",
+      "num_frames": 1283,
+      "relative_path": "test/frames/06"
+    },
+    {
+      "video_name": "test_07",
+      "source_video_name": "07",
+      "split": "test",
+      "num_frames": 605,
+      "relative_path": "test/frames/07"
+    },
+    {
+      "video_name": "test_08",
+      "source_video_name": "08",
+      "split": "test",
+      "num_frames": 36,
+      "relative_path": "test/frames/08"
+    },
+    {
+      "video_name": "test_09",
+      "source_video_name": "09",
+      "split": "test",
+      "num_frames": 1175,
+      "relative_path": "test/frames/09"
+    },
+    {
+      "video_name": "test_10",
+      "source_video_name": "10",
+      "split": "test",
+      "num_frames": 841,
+      "relative_path": "test/frames/10"
+    },
+    {
+      "video_name": "test_11",
+      "source_video_name": "11",
+      "split": "test",
+      "num_frames": 472,
+      "relative_path": "test/frames/11"
+    },
+    {
+      "video_name": "test_12",
+      "source_video_name": "12",
+      "split": "test",
+      "num_frames": 1271,
+      "relative_path": "test/frames/12"
+    },
+    {
+      "video_name": "test_13",
+      "source_video_name": "13",
+      "split": "test",
+      "num_frames": 549,
+      "relative_path": "test/frames/13"
+    },
+    {
+      "video_name": "test_14",
+      "source_video_name": "14",
+      "split": "test",
+      "num_frames": 507,
+      "relative_path": "test/frames/14"
+    },
+    {
+      "video_name": "test_15",
+      "source_video_name": "15",
+      "split": "test",
+      "num_frames": 1001,
+      "relative_path": "test/frames/15"
+    },
+    {
+      "video_name": "test_16",
+      "source_video_name": "16",
+      "split": "test",
+      "num_frames": 740,
+      "relative_path": "test/frames/16"
+    },
+    {
+      "video_name": "test_17",
+      "source_video_name": "17",
+      "split": "test",
+      "num_frames": 426,
+      "relative_path": "test/frames/17"
+    },
+    {
+      "video_name": "test_18",
+      "source_video_name": "18",
+      "split": "test",
+      "num_frames": 294,
+      "relative_path": "test/frames/18"
+    },
+    {
+      "video_name": "test_19",
+      "source_video_name": "19",
+      "split": "test",
+      "num_frames": 248,
+      "relative_path": "test/frames/19"
+    },
+    {
+      "video_name": "test_20",
+      "source_video_name": "20",
+      "split": "test",
+      "num_frames": 273,
+      "relative_path": "test/frames/20"
+    },
+    {
+      "video_name": "test_21",
+      "source_video_name": "21",
+      "split": "test",
+      "num_frames": 76,
+      "relative_path": "test/frames/21"
+    }
+  ],
+  "train_video_count": 16,
+  "test_video_count": 21
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "checkpoint": "argus stream A\\outputs\\avenue_stream_a_smoke_v2\\checkpoints\\stream_a\\best_holdout.pt",
+    "normal_holdout_score": 4.536115927322726e-09,
+    "normal_holdout_p95": 5.159460414461137e-09,
+    "normal_holdout_std": 3.7608252623222427e-10,
+    "normal_num_clips": 267,
+    "signal_kind": "score_norm",
+    "sigma_strategy": "single_sigma",
+    "gmm_components": 5,
+    "single_sigma_index": 0,
+    "rank": 1
+  },
+  {
+    "checkpoint": "argus stream A\\outputs\\avenue_stream_a_smoke_v2\\checkpoints\\stream_a\\epochs\\epoch_0002.pt",
+    "normal_holdout_score": 4.536115927322726e-09,
+    "normal_holdout_p95": 5.159460414461137e-09,
+    "normal_holdout_std": 3.7608252623222427e-10,
+    "normal_num_clips": 267,
+    "signal_kind": "score_norm",
+    "sigma_strategy": "single_sigma",
+    "gmm_components": 5,
+    "single_sigma_index": 0,
+    "rank": 2
+  },
+  {
+    "checkpoint": "argus stream A\\outputs\\avenue_stream_a_smoke_v2\\checkpoints\\stream_a\\last.pt",
+    "normal_holdout_score": 4.536115927322726e-09,
+    "normal_holdout_p95": 5.159460414461137e-09,
+    "normal_holdout_std": 3.7608252623222427e-10,
+    "normal_num_clips": 267,
+    "signal_kind": "score_norm",
+    "sigma_strategy": "single_sigma",
+    "gmm_components": 5,
+    "single_sigma_index": 0,
+    "rank": 3
+  },
+  {
+    "checkpoint": "argus stream A\\outputs\\avenue_stream_a_smoke_v2\\checkpoints\\stream_a\\epochs\\epoch_0001.pt",
+    "normal_holdout_score": 4.6001638054349314e-09,
+    "normal_holdout_p95": 5.270664793499691e-09,
+    "normal_holdout_std": 3.995618835794801e-10,
+    "normal_num_clips": 267,
+    "signal_kind": "score_norm",
+    "sigma_strategy": "single_sigma",
+    "gmm_components": 5,
+    "single_sigma_index": 0,
+    "rank": 4
+  }
+]

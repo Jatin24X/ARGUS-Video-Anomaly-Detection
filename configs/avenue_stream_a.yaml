@@ -1,0 +1,16 @@
+inherits: avenue_stream_a_template
+
+stream_a:
+  beta: 0.1
+
+training:
+  learning_rate: 4.0e-5
+  epochs: 30
+  checkpoint_interval_epochs: 5
+  validation_interval_epochs: 5
+
+evaluation:
+  signal_kind: log_density
+  sigma_strategy: gmm
+  gmm_components: 1
+  smoothing_sigma: 13

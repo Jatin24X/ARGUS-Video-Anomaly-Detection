@@ -1,0 +1,30 @@
+# ARGUS - Locked Stream A baseline
+#
+# This preset freezes the current official VideoMAE Stream A recipe.
+# Load with: --dataset stream_a_locked
+
+data:
+  dataset: ubnormal
+  num_scenes: 29
+  fps: 30
+  train_split: train
+  val_split: val
+  test_split: test
+
+backbone:
+  scene: videomae_v2_base
+
+stream_a:
+  beta: 1.0
+
+training:
+  ema:
+    enabled: false
+    decay: 0.999
+
+evaluation:
+  signal_kind: score_norm
+  sigma_strategy: single_sigma
+  gmm_components: 5
+  single_sigma_index: 0
+  smoothing_sigma: 20

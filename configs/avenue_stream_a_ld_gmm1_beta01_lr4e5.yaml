@@ -1,0 +1,8 @@
+inherits: avenue_stream_a_ld_gmm1_beta01
+
+training:
+  learning_rate: 4.0e-5
+  epochs: 30
+
+evaluation:
+  smoothing_sigma: 13

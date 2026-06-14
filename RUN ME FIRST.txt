@@ -1,0 +1,37 @@
+ARGUS STREAM A - LAB EVALUATION QUICK START
+
+1. Open a terminal in this folder.
+2. Install dependencies:
+   pip install -r requirements.txt
+
+3. Fastest demo path:
+   run_demo.bat
+
+4. Avenue evaluation result to show:
+   outputs\reports\avenue_stream_a_best_test.json
+
+5. Main explanation files to keep open:
+   lab_evaluation_summary.md
+   presentation_script.md
+   viva_qa.md
+
+6. Optional best-observed-micro diagnostic:
+   outputs\reports\avenue_stream_a_best_test_high_micro_diag.json
+
+Recommended for lab evaluation:
+- Show the demo first.
+- The demo now has two profiles:
+  Avenue (main reported frame-centric result)
+  UBnormal (locked frozen baseline)
+- Then show lab_evaluation_summary.md.
+- Lead with the main reported Avenue result:
+  0.8451 micro / 0.8514 macro / 0.8400 clip
+- Mention the 0.8466 result only as a post-hoc eval-only diagnostic.
+
+Important:
+- This folder is standalone.
+- It does not depend on the active Stream B research branch.
+- Avenue support is now included end-to-end with local labels and features.
+- The demo uses a faster interactive path with adaptive frame thinning and
+  in-memory VideoMAE extraction.
+- Do not compare our frame-centric result directly to MULDE's 94.3 object-centric Avenue score.

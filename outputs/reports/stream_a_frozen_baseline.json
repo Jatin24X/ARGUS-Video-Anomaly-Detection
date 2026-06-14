@@ -1,0 +1,11 @@
+{
+  "official_stream_a_baseline": {
+    "frozen_checkpoint": "outputs\\checkpoints\\stream_a_locked_videomae_beta1_score_norm_sigma0.pt",
+    "manifest": "outputs\\checkpoints\\stream_a_locked_videomae_beta1_score_norm_sigma0.pt.manifest.json",
+    "metrics": {
+      "clip_auc": 0.7309,
+      "test_macro_auc": 0.841,
+      "test_micro_auc": 0.7394
+    }
+  }
+}

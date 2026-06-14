@@ -1,0 +1,54 @@
+{
+  "train": {
+    "normal": [
+      "train_01",
+      "train_02",
+      "train_03",
+      "train_04",
+      "train_05",
+      "train_06",
+      "train_07",
+      "train_08",
+      "train_09",
+      "train_10",
+      "train_11",
+      "train_12",
+      "train_13"
+    ],
+    "abnormal": []
+  },
+  "val": {
+    "normal": [
+      "train_14",
+      "train_15",
+      "train_16"
+    ],
+    "abnormal": []
+  },
+  "test": {
+    "normal": [],
+    "abnormal": [
+      "test_01",
+      "test_02",
+      "test_03",
+      "test_04",
+      "test_05",
+      "test_06",
+      "test_07",
+      "test_08",
+      "test_09",
+      "test_10",
+      "test_11",
+      "test_12",
+      "test_13",
+      "test_14",
+      "test_15",
+      "test_16",
+      "test_17",
+      "test_18",
+      "test_19",
+      "test_20",
+      "test_21"
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "backbone": "videomae_v2_base",
+  "created_at_utc": "2026-04-02T14:54:20.987935+00:00",
+  "dataset": "ubnormal",
+  "evaluation": {
+    "sigma_strategy": "single_sigma",
+    "signal_kind": "score_norm",
+    "single_sigma_index": 0,
+    "smoothing_sigma": 20
+  },
+  "frozen_checkpoint": "outputs\\checkpoints\\stream_a_locked_videomae_beta1_score_norm_sigma0.pt",
+  "git_commit": "691187e4ad82a7df0ab2fe85a1ac0ae07c002d97",
+  "metrics": {
+    "clip_auc": 0.7309,
+    "test_macro_auc": 0.841,
+    "test_micro_auc": 0.7394
+  },
+  "notes": [
+    "Frozen Stream A baseline after VideoMAE beta=1.0, EMA disabled.",
+    "The test split was used during Stream A development and is now frozen.",
+    "Use val for all future selection work before re-opening test reporting."
+  ],
+  "reports": {
+    "test_json": "outputs/reports/stream_a_beta_1p0_score_norm_sigma0_test.json",
+    "val_ranking_csv": "outputs/reports/stream_a_beta_1p0_score_norm_sigma0_rank_val.csv",
+    "val_ranking_json": "outputs/reports/stream_a_beta_1p0_score_norm_sigma0_rank_val.json"
+  },
+  "training": {
+    "beta": 1.0,
+    "ema_enabled": false,
+    "model_selection_metric": "frame_micro_auc",
+    "scheduler": "none"
+  },
+  "winning_val_checkpoint": "outputs\\stream_a_beta_1p0\\checkpoints\\stream_a\\epochs\\epoch_0400.pt"
+}

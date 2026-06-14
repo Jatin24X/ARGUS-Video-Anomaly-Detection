@@ -1,0 +1,35 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+
+# Frontend/build artifacts
+deployment/vercel_app/.next/
+deployment/vercel_app/node_modules/
+deployment/vercel_app/out/
+deployment/vercel_app/.vercel/
+deployment/vercel_app/.env.local
+deployment/vercel_app/tsconfig.tsbuildinfo
+
+# Local runtime/temp files
+*.log
+tmp/
+temp/
+
+# Keep the repository recruiter-friendly: exclude historical experiment dumps.
+outputs/**
+!outputs/
+!outputs/reports/
+!outputs/reports/**
+!outputs/checkpoints/
+!outputs/checkpoints/stream_a_locked_videomae_beta1_score_norm_sigma0.pt
+!outputs/checkpoints/stream_a_locked_videomae_beta1_score_norm_sigma0.pt.manifest.json
+!outputs/avenue_stream_a_ld_gmm1_beta01_lr4e5_run1/
+!outputs/avenue_stream_a_ld_gmm1_beta01_lr4e5_run1/checkpoints/
+!outputs/avenue_stream_a_ld_gmm1_beta01_lr4e5_run1/checkpoints/stream_a/
+!outputs/avenue_stream_a_ld_gmm1_beta01_lr4e5_run1/checkpoints/stream_a/best_holdout.pt
+!outputs/avenue_stream_a_ld_gmm1_beta01_lr4e5_run1/checkpoints/stream_a/best_holdout_gmm.pkl

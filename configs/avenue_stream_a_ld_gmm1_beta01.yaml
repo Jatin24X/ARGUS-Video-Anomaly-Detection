@@ -1,0 +1,4 @@
+inherits: avenue_stream_a_ld_gmm1
+
+stream_a:
+  beta: 0.1
