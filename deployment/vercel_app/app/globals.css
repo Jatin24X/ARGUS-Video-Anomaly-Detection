@@ -802,31 +802,36 @@ p {
   object-fit: contain;
 }
 
-/* Simulated Crop Lines for sectors */
-.roi-overlay-box {
+/* Dimming sector mask and ROI overlays */
+.roi-mask-dim {
   position: absolute;
   top: 0;
   bottom: 0;
-  border: 2px dashed rgba(255, 178, 95, 0.65);
-  background: rgba(255, 178, 95, 0.05);
+  background: rgba(3, 6, 8, 0.75);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   pointer-events: none;
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   animation: fadeIn 0.2s ease;
 }
 
-.center-roi {
-  left: 20%;
-  right: 20%;
-  width: 60%;
+.roi-overlay-outline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 2px dashed #ffb25f;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 11;
+  box-shadow: 0 0 15px rgba(255, 178, 95, 0.25), inset 0 0 15px rgba(255, 178, 95, 0.05);
+  animation: pulse-border 2s infinite ease-in-out, fadeIn 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.left-roi {
-  left: 0;
-  width: 50%;
-}
-
-.right-roi {
-  right: 0;
-  width: 50%;
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(255, 178, 95, 0.6); box-shadow: 0 0 10px rgba(255, 178, 95, 0.15); }
+  50% { border-color: rgba(255, 178, 95, 1); box-shadow: 0 0 20px rgba(255, 178, 95, 0.4); }
 }
 
 @keyframes fadeIn {
@@ -1469,6 +1474,194 @@ p {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
+   Bento Grid Layout & Cards
+   ────────────────────────────────────────────────────────────────────── */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.bento-card {
+  display: flex;
+  background: rgba(13, 18, 23, 0.45);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), transparent);
+  pointer-events: none;
+}
+
+.bento-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(41, 211, 255, 0.25);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(41, 211, 255, 0.05);
+}
+
+.col-span-4 {
+  grid-column: span 4 / span 4;
+}
+
+.col-span-6 {
+  grid-column: span 6 / span 6;
+}
+
+.col-span-8 {
+  grid-column: span 8 / span 8;
+}
+
+.col-span-12 {
+  grid-column: span 12 / span 12;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.bento-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  width: 100%;
+}
+
+.bento-card-header h3 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #bad0d8;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Selected Node Details IDE Drawer & Layout
+   ────────────────────────────────────────────────────────────────────── */
+.drawer-content-grid {
+  display: grid;
+  grid-template-columns: 0.45fr 0.55fr;
+  gap: 24px;
+}
+
+.drawer-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drawer-right-col {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #090d13;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+.ide-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #11161d;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ide-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 8px var(--mint);
+}
+
+.ide-filename {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ide-body {
+  padding: 16px;
+  overflow: auto;
+  max-height: 280px;
+}
+
+.ide-body pre {
+  margin: 0;
+}
+
+.ide-body code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: #c9d1d9;
+  display: block;
+}
+
+.no-telemetry-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  min-height: 80px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.01);
+  padding: 20px;
+}
+
+/* Custom Scrollbars for code view and evidence logs */
+.ide-body::-webkit-scrollbar,
+.log-table-container::-webkit-scrollbar,
+.evidence-scroller-grid::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ide-body::-webkit-scrollbar-track,
+.log-table-container::-webkit-scrollbar-track,
+.evidence-scroller-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ide-body::-webkit-scrollbar-thumb,
+.log-table-container::-webkit-scrollbar-thumb,
+.evidence-scroller-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+}
+
+.ide-body::-webkit-scrollbar-thumb:hover,
+.log-table-container::-webkit-scrollbar-thumb:hover,
+.evidence-scroller-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(41, 211, 255, 0.3);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
    Responsive Styles
    ────────────────────────────────────────────────────────────────────── */
 @media (max-width: 1150px) {
@@ -1489,6 +1682,9 @@ p {
   }
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  .col-span-4, .col-span-6, .col-span-8, .col-span-12 {
+    grid-column: span 12 / span 12;
   }
 }
 

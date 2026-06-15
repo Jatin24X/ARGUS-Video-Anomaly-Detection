@@ -79,6 +79,7 @@ interface PipelineNode {
   outputShape?: string;
   description: string;
   rationale: string;
+  filename: string;
 }
 
 const API_BASE = (process.env.NEXT_PUBLIC_ARGUS_API_URL ?? "").replace(/\/$/, "");
@@ -94,6 +95,7 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "List[BGR numpy.ndarray]",
     description: "Decodes the raw container and extracts visual frames at their native resolution.",
     rationale: "FFmpeg bindings in OpenCV provide fast multi-format hardware-accelerated decoding. If a Spatial ROI is selected, we perform coordinate-slice cropping directly on the numpy arrays on the fly to discard irrelevant background regions before model input.",
+    filename: "src/inference/engine.py#L345-388",
   },
   {
     id: "sampler",
@@ -103,6 +105,7 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "List[RGB numpy.ndarray] @ 12.0 FPS",
     description: "Automatically thins down the sequence to a uniform analysis frame rate of 12 FPS, capped at 720 frames max.",
     rationale: "Reduces computational overhead on long sequences. If the video is extremely long, the sampling step size increases proportionally. Capping at 720 frames prevents GPU out-of-memory (OOM) states on serverless containers.",
+    filename: "src/inference/engine.py#L350-358",
   },
   {
     id: "extractor",
@@ -112,6 +115,7 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "[Batch, 768] (Feature vectors)",
     description: "Extracts high-dimensional spatio-temporal representations from overlapping 16-frame clips using a self-supervised Vision Transformer.",
     rationale: "Using frozen VideoMAE-v2 features trained on massive video corpora provides robust temporal embeddings. This zero-shot capability makes it highly generalizable to surveillance scenes without requiring video-specific fine-tuning.",
+    filename: "src/models/backbones/videomae.py#L332-389",
   },
   {
     id: "density",
@@ -121,6 +125,7 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "[Batch, Scales] (Raw scores)",
     description: "Estimates the likelihood density score of each clip feature under the distribution of the normal-only training dataset.",
     rationale: "By training solely on normal video sequences, any clips containing movements/events not represented in the normal dataset yield a low likelihood, indicating an anomalous state. Using multiple kernel scale indices provides high-fidelity anomaly matching.",
+    filename: "src/models/scorers/mulde.py#L76-92",
   },
   {
     id: "calibration",
@@ -130,6 +135,7 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "[Batch] (Calibrated scores)",
     description: "Normalizes raw density scores into a unified outlier probability score using a Gaussian Mixture Model calibrated during evaluation.",
     rationale: "Raw density values can vary wildly across scenes. Calibrating with a 1-component GMM aligns the score profiles across different datasets (Avenue, UBnormal), establishing a standard baseline.",
+    filename: "src/inference/engine.py#L410-432",
   },
   {
     id: "smoothing",
@@ -139,6 +145,7 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "[Batch] (Normalized timeline)",
     description: "Applies a 1D temporal Gaussian convolution filter followed by global min-max scaling to project anomaly scores into a clean [0, 1] range.",
     rationale: "Surveillance anomalies are rarely single-frame events; they possess temporal continuity. Applying Gaussian smoothing suppresses transient high-frequency noise (e.g. compression artifacts) and prevents false alarms.",
+    filename: "src/evaluation/metrics.py#L12-32",
   },
   {
     id: "threshold",
@@ -148,8 +155,68 @@ const pipelineNodes: PipelineNode[] = [
     outputShape: "List[AnomalyIntervals] & Active Alert",
     description: "Compares normalized scores against a customizable percentile threshold (50th - 99th) in real-time.",
     rationale: "Instead of hardcoding cutoffs on the backend, moving the sensitivity slider to the client-side lets the operator fine-tune anomaly margins dynamically. The system highlights alert regions instantly without running inference again.",
+    filename: "deployment/vercel_app/app/page.tsx#L320-335",
   },
 ];
+
+const codeSnippets: Record<string, string> = {
+  decoder: `def _decode_video(self, video_path: str, roi_sector: str = "full") -> dict:
+    cap = cv2.VideoCapture(video_path)
+    # Coordinate-slice cropping directly on BGR frame arrays
+    h, w = frame_rgb.shape[:2]
+    if roi_sector == "center":
+        frame_rgb = frame_rgb[:, int(w * 0.2):int(w * 0.8)]
+    elif roi_sector == "left":
+        frame_rgb = frame_rgb[:, :int(w * 0.5)]
+    elif roi_sector == "right":
+        frame_rgb = frame_rgb[:, int(w * 0.5):]
+    return {"raw_frame_total": raw_frame_total, ...}`,
+  sampler: `sample_step = max(1, int(round(source_fps / TARGET_ANALYSIS_FPS)))
+if raw_frame_total > 0:
+    # Cap sequence length to prevent GPU VRAM overflows on serverless containers
+    sample_step = max(sample_step, int(np.ceil(raw_frame_total / MAX_ANALYSIS_FRAMES)))
+...
+if frame_idx % sample_step != 0:
+    continue`,
+  extractor: `# Load frozen backbone via transformers API config
+config = AutoConfig.from_pretrained("OpenGVLab/VideoMAEv2-Base", trust_remote_code=True)
+model = AutoModel.from_config(config, trust_remote_code=True)
+# Reshape video batch to target tensor format [B, C, T, H, W]
+batch = batch.permute(0, 2, 1, 3, 4).to(self.device)
+with torch.autocast(device_type="cuda", dtype=torch.float16):
+    outputs = self.model(pixel_values=batch)
+pooled_embeddings = outputs.mean(dim=1)`,
+  density: `# Fit training data normal embeddings to estimate density likelihood
+class MULDEScorer(nn.Module):
+    def score_anomaly(self, x: torch.Tensor) -> torch.Tensor:
+        # Multiscale density likelihood estimation
+        log_densities = []
+        for scale_idx in range(self.num_scales):
+            log_d = self.density_estimators[scale_idx](x)
+            log_densities.append(log_d)
+        return torch.stack(log_densities, dim=-1)`,
+  calibration: `# Scale log density scores to standard probability values
+scorer = MULDEScorer.load_checkpoint(checkpoint_path)
+if profile.scoring_mode == "gmm":
+    # Calibrated GMM anomaly scoring
+    clip_scores = scorer.score_anomaly(features)
+else:
+    # Multiscale score norm
+    signal = scorer.compute_multiscale_signal(features, signal_kind=profile.signal_kind)
+    clip_scores = signal[:, profile.single_sigma_index]`,
+  smoothing: `def gaussian_smooth(x: np.ndarray, sigma: float) -> np.ndarray:
+    # Apply 1D temporal Gaussian filter
+    return scipy.ndimage.filters.gaussian_filter1d(x, sigma)
+
+# Global MinMax normalization to standard interval [0, 1]
+normalized = (smoothed - smoothed.min()) / (smoothed.max() - smoothed.min())`,
+  threshold: `// Client-side Javascript/TypeScript recalculation (Dynamic UI)
+const activeThreshold = useMemo(() => {
+  const sorted = [...scores].sort((a, b) => a - b);
+  const index = Math.floor((thresholdPercentile / 100) * (sorted.length - 1));
+  return sorted[index];
+}, [scores, thresholdPercentile]);`,
+};
 
 const recruiterQAs = [
   {
@@ -206,7 +273,7 @@ function TimelineChart({
     const plotWidth = width - padding.left - padding.right;
     const plotHeight = height - padding.top - padding.bottom;
     const maxX = Math.max(...timeline.timestamps_sec, 1);
-    const maxY = 1.05; // Normalised to [0, 1], buffer room on top
+    const maxY = 1.05; // Normalised to [0, 1]
     const x = (value: number) => padding.left + (value / maxX) * plotWidth;
     const y = (value: number) => padding.top + plotHeight - (value / maxY) * plotHeight;
     const linePath = timeline.timestamps_sec
@@ -410,7 +477,7 @@ export default function Page() {
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
 
-  // Load initial settings
+  // Load initial parameters and auto-select first video
   useEffect(() => {
     if (!API_BASE) {
       setError("The API URL is not configured for this workspace.");
@@ -583,7 +650,6 @@ export default function Page() {
     // Try loading static pre-cached analysis first
     const success = await loadCachedAnalysis(sample.id, roiSector);
     if (!success) {
-      // Fallback: clear analysis and await manually hitting the live GPU run
       setAnalysis(null);
     }
   }
@@ -597,7 +663,6 @@ export default function Page() {
         setAnalysis(null);
       }
     } else {
-      // Clear analysis for uploaded clips to force a re-run with the crop sector
       setAnalysis(null);
     }
   }
@@ -712,7 +777,7 @@ export default function Page() {
         <a className="console-brand" href="#top">
           <span className="brand-badge">ARGUS</span>
           <div className="brand-text">
-            <strong>Stream A Dashboard</strong>
+            <strong>Stream A Bento-Console</strong>
             <small>Unsupervised anomaly estimation console</small>
           </div>
         </a>
@@ -824,7 +889,7 @@ export default function Page() {
           ))}
         </div>
 
-        {/* Selected Node Details Drawer */}
+        {/* Selected Node Details IDE Drawer */}
         {activeNode && (
           <div className="node-details-drawer">
             {(() => {
@@ -836,25 +901,39 @@ export default function Page() {
                     <button className="drawer-close" onClick={() => setActiveNode(null)}>×</button>
                   </div>
                   <div className="drawer-content-grid">
-                    <div className="drawer-shapes">
-                      {node.inputShape && (
-                        <div className="shape-box">
-                          <span>INPUT SHAPE</span>
-                          <code>{node.inputShape}</code>
-                        </div>
-                      )}
-                      {node.outputShape && (
-                        <div className="shape-box">
-                          <span>OUTPUT SHAPE</span>
-                          <code>{node.outputShape}</code>
-                        </div>
-                      )}
+                    <div className="drawer-left-col">
+                      <div className="drawer-shapes">
+                        {node.inputShape && (
+                          <div className="shape-box">
+                            <span>INPUT TENSOR</span>
+                            <code>{node.inputShape}</code>
+                          </div>
+                        )}
+                        {node.outputShape && (
+                          <div className="shape-box">
+                            <span>OUTPUT TENSOR</span>
+                            <code>{node.outputShape}</code>
+                          </div>
+                        )}
+                      </div>
+                      <div className="drawer-text">
+                        <h4>Functional Overview</h4>
+                        <p>{node.description}</p>
+                        <h4>Systems Engineering Rationale</h4>
+                        <p>{node.rationale}</p>
+                      </div>
                     </div>
-                    <div className="drawer-text">
-                      <h4>Functional Overview</h4>
-                      <p>{node.description}</p>
-                      <h4>Systems Engineering Rationale</h4>
-                      <p>{node.rationale}</p>
+                    
+                    <div className="drawer-right-col">
+                      <div className="ide-header">
+                        <span className="ide-indicator" />
+                        <span className="ide-filename">{node.filename}</span>
+                      </div>
+                      <div className="ide-body">
+                        <pre>
+                          <code>{codeSnippets[node.id]}</code>
+                        </pre>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -864,185 +943,144 @@ export default function Page() {
         )}
       </section>
 
-      {/* 3. Live Dashboard Workspace */}
+      {/* 3. Live Dashboard Workspace (The Bento Grid) */}
       <section id="dashboard-section" className="console-dashboard-workspace">
-        <div className="dashboard-grid">
-          {/* Column A: Controls & Media Feed */}
-          <div className="dashboard-column-left">
-            {/* Source Tab Header */}
-            <div className="card-panel">
-              <div className="card-header">
-                <h3>Video Intake Stream</h3>
-                <div className="tab-buttons">
-                  <button className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Sample Gallery</button>
-                  <button className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload File</button>
-                </div>
-              </div>
-
-              {mode === "samples" ? (
-                <div className="gallery-layout">
-                  <div className="gallery-grid">
-                    {samples.map((sample) => (
-                      <button
-                        key={sample.id}
-                        className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
-                        onClick={() => selectSample(sample)}
-                      >
-                        <div className="gallery-thumb-container">
-                          <img src={absoluteApiUrl(sample.thumbnail_url)} alt={sample.title} />
-                          <div className="gallery-card-badge">{sample.dataset}</div>
-                        </div>
-                        <div className="gallery-info">
-                          <b>{sample.title}</b>
-                          <small>{sample.size_mb} MB</small>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  {samples.length === 0 && (
-                    <div className="loading-gallery-spinner">
-                      <div className="pulse-loader" />
-                      <span>Contacting serverless registry...</span>
-                    </div>
+        <div className="bento-grid">
+          
+          {/* Card 1: Video Player & Bounding Overlays (col-span-8) */}
+          <div className="bento-card col-span-8 flex-col player-bento-card">
+            <div className="bento-card-header">
+              <h3>Surveillance Feed Monitor</h3>
+              <span className="panel-badge-status">
+                {roiSector === "full" ? "FULL FRAME" : `ROI: ${roiSector.toUpperCase()}`}
+              </span>
+            </div>
+            
+            <div className="video-player-viewport">
+              {previewUrl ? (
+                <div className="video-positioner">
+                  <video
+                    ref={videoRef}
+                    src={previewUrl}
+                    controls
+                    playsInline
+                    muted
+                    onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                    onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
+                  />
+                  {/* Spatial ROI Simulated Overlays */}
+                  {roiSector === "center" && (
+                    <>
+                      <div className="roi-mask-dim left-dim" style={{ left: 0, width: "20%" }} />
+                      <div className="roi-mask-dim right-dim" style={{ right: 0, width: "20%" }} />
+                      <div className="roi-overlay-outline center-outline" style={{ left: "20%", width: "60%" }} />
+                    </>
+                  )}
+                  {roiSector === "left" && (
+                    <>
+                      <div className="roi-mask-dim right-dim" style={{ right: 0, width: "50%" }} />
+                      <div className="roi-overlay-outline left-outline" style={{ left: 0, width: "50%" }} />
+                    </>
+                  )}
+                  {roiSector === "right" && (
+                    <>
+                      <div className="roi-mask-dim left-dim" style={{ left: 0, width: "50%" }} />
+                      <div className="roi-overlay-outline right-outline" style={{ right: 0, width: "50%" }} />
+                    </>
                   )}
                 </div>
               ) : (
-                <div className="uploader-layout">
-                  <label className="uploader-dropzone" htmlFor="console-video-upload">
-                    <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
-                    <span className="upload-arrow">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    </span>
-                    <strong>Ingest local video container</strong>
-                    <small>MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
-                  </label>
-                </div>
+                <div className="no-video-placeholder">No active video stream</div>
               )}
-            </div>
-
-            {/* Video Preview Player with ROI simulation overlay */}
-            <div className="card-panel player-panel">
-              <div className="card-header">
-                <h3>Surveillance Feed Monitor</h3>
-                <span className="panel-badge-status">
-                  {roiSector === "full" ? "FULL FRAME" : `ROI: ${roiSector.toUpperCase()}`}
-                </span>
-              </div>
-              <div className="video-player-viewport">
-                {previewUrl ? (
-                  <div className="video-positioner">
-                    <video
-                      ref={videoRef}
-                      src={previewUrl}
-                      controls
-                      playsInline
-                      muted
-                      onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                      onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
-                    />
-                    {/* Spatial ROI Simulated Overlays */}
-                    {roiSector === "center" && <div className="roi-overlay-box center-roi" />}
-                    {roiSector === "left" && <div className="roi-overlay-box left-roi" />}
-                    {roiSector === "right" && <div className="roi-overlay-box right-roi" />}
-                  </div>
-                ) : (
-                  <div className="no-video-placeholder">No active video stream</div>
-                )}
-              </div>
-            </div>
-
-            {/* Pipeline Configuration Parameters */}
-            <div className="card-panel">
-              <div className="card-header">
-                <h3>Pipeline Hyperparameters</h3>
-              </div>
-              <div className="config-grid">
-                <div className="config-item">
-                  <label>Scoring Profile</label>
-                  <div className="profile-buttons-group">
-                    {profiles.map((p) => (
-                      <button
-                        key={p.key}
-                        className={selectedKey === p.key ? "profile-active-btn" : ""}
-                        onClick={() => {
-                          setSelectedKey(p.key);
-                          // Clear analysis to force running with selected profile
-                          setAnalysis(null);
-                        }}
-                      >
-                        {p.dataset_name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="config-item">
-                  <label>Spatial Crop ROI Sector</label>
-                  <div className="sector-select-group">
-                    {["full", "left", "center", "right"].map((sector) => (
-                      <button
-                        key={sector}
-                        className={roiSector === sector ? "sector-active-btn" : ""}
-                        onClick={() => handleRoiChange(sector)}
-                      >
-                        {sector.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="config-item">
-                  <div className="slider-header">
-                    <label>Sensitivity Cutoff</label>
-                    <span className="slider-value">{thresholdPercentile}th percentile</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="99"
-                    value={thresholdPercentile}
-                    onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
-                    className="console-range-slider"
-                  />
-                  <small className="slider-hint">
-                    Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
-                  </small>
-                </div>
-
-                <div className="action-buttons-strip">
-                  <button
-                    className="console-btn-primary"
-                    disabled={loading || !selectedProfile || (!selectedSample && !videoFile)}
-                    onClick={runLiveAnalysis}
-                  >
-                    <span>{loading ? progressCopy : "Analyze video"}</span>
-                  </button>
-
-                  {analysis && (
-                    <button className="console-btn-secondary" onClick={handleExportJSON}>
-                      Export Report (JSON)
-                    </button>
-                  )}
-                </div>
-
-                {loading && (
-                  <div className="live-loading-hud">
-                    <div className="loading-spinner-circle" />
-                    <span>Inference active. Elapsed: {loadingSeconds}s. Cold GPUs can take 45-60s to bootstrap.</span>
-                  </div>
-                )}
-                {error && <div className="console-error-banner">{error}</div>}
-              </div>
             </div>
           </div>
 
-          {/* Column B: Real-Time HUD and Timeline Charts */}
-          <div className="dashboard-column-right">
-            {/* Active Alarm Warning HUD */}
+          {/* Card 2: Configuration & Parameters (col-span-4) */}
+          <div className="bento-card col-span-4 flex-col">
+            <div className="bento-card-header">
+              <h3>Pipeline Parameters</h3>
+            </div>
+            
+            <div className="config-grid">
+              <div className="config-item">
+                <label>Scoring Profile</label>
+                <div className="profile-buttons-group">
+                  {profiles.map((p) => (
+                    <button
+                      key={p.key}
+                      className={selectedKey === p.key ? "profile-active-btn" : ""}
+                      onClick={() => {
+                        setSelectedKey(p.key);
+                        setAnalysis(null);
+                      }}
+                    >
+                      {p.dataset_name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="config-item">
+                <label>Spatial Crop ROI Sector</label>
+                <div className="sector-select-group">
+                  {["full", "left", "center", "right"].map((sector) => (
+                    <button
+                      key={sector}
+                      className={roiSector === sector ? "sector-active-btn" : ""}
+                      onClick={() => handleRoiChange(sector)}
+                    >
+                      {sector.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="config-item">
+                <div className="slider-header">
+                  <label>Sensitivity Cutoff</label>
+                  <span className="slider-value">{thresholdPercentile}th percentile</span>
+                </div>
+                <input
+                  type="range"
+                  min="50"
+                  max="99"
+                  value={thresholdPercentile}
+                  onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
+                  className="console-range-slider"
+                />
+                <small className="slider-hint">
+                  Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
+                </small>
+              </div>
+
+              <div className="action-buttons-strip">
+                <button
+                  className="console-btn-primary"
+                  disabled={loading || !selectedProfile || (!selectedSample && !videoFile)}
+                  onClick={runLiveAnalysis}
+                >
+                  <span>{loading ? progressCopy : "Analyze video"}</span>
+                </button>
+
+                {analysis && (
+                  <button className="console-btn-secondary" onClick={handleExportJSON}>
+                    Export Report
+                  </button>
+                )}
+              </div>
+
+              {loading && (
+                <div className="live-loading-hud">
+                  <div className="loading-spinner-circle" />
+                  <span>Inference active. Elapsed: {loadingSeconds}s. Cold GPUs can take 45-60s to bootstrap.</span>
+                </div>
+              )}
+              {error && <div className="console-error-banner">{error}</div>}
+            </div>
+          </div>
+
+          {/* Card 3: Active Alarm Warning HUD (col-span-12) */}
+          <div className="col-span-12">
             <div className={`alarm-alert-banner ${isCurrentlyAnomalous ? "alarm-triggered" : ""}`}>
               <div className="alarm-indicator">
                 <span className="alarm-icon" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -1060,65 +1098,130 @@ export default function Page() {
               </div>
               <div className="alarm-pulse-light" />
             </div>
+          </div>
 
-            {/* Performance diagnostics HUD */}
-            {analysis && (
-              <div className="card-panel diagnostic-hud">
-                <div className="card-header">
-                  <h3>Pipeline Execution Profiler</h3>
-                  <span className={`hud-badge ${cacheStatus === "cached" ? "badge-green" : "badge-orange"}`}>
-                    {cacheStatus === "cached" ? "Local Cache hit" : "Live GPU execution"}
-                  </span>
-                </div>
-                <div className="hud-stats-row">
-                  <div className="hud-stat-box">
-                    <span>HARDWARE DEVICE</span>
-                    <strong>{cacheStatus === "cached" ? "Client Cache" : "NVIDIA T4 GPU"}</strong>
-                  </div>
-                  <div className="hud-stat-box">
-                    <span>ANALYSIS LATENCY</span>
-                    <strong>{cacheStatus === "cached" ? "0ms" : `${analysis.analysis.runtime_sec.toFixed(2)}s`}</strong>
-                  </div>
-                  <div className="hud-stat-box">
-                    <span>PROCESSING SPEED</span>
-                    <strong>
-                      {analysis.analysis.runtime_sec > 0
-                        ? `${(analysis.analysis.summary.sampled_frame_count / analysis.analysis.runtime_sec).toFixed(1)} FPS`
-                        : "N/A"}
-                    </strong>
-                  </div>
-                  <div className="hud-stat-box">
-                    <span>EMBEDDING TYPE</span>
-                    <strong>VideoMAE [768d]</strong>
-                  </div>
-                </div>
+          {/* Card 4: Video Intake & Sample Gallery (col-span-4) */}
+          <div className="bento-card col-span-4 flex-col gallery-bento-card">
+            <div className="bento-card-header">
+              <h3>Video Intake Source</h3>
+              <div className="tab-buttons">
+                <button className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Sample Gallery</button>
+                <button className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload File</button>
               </div>
-            )}
-
-            {/* SVG Interactive Graph */}
-            <div className="card-panel graph-panel">
-              <div className="card-header">
-                <h3>Temporal Anomaly Score Sequence</h3>
-                {analysis && (
-                  <small className="monospace-filename">{analysis.analysis.video_name}</small>
-                )}
-              </div>
-              <TimelineChart
-                timeline={analysis?.analysis.timeline ?? null}
-                activeThreshold={activeThreshold}
-                activeAnomalyRegions={activeAnomalyRegions}
-                accent={analysis?.profile.accent ?? "#29d3ff"}
-                currentTime={currentTime}
-                onSeek={(time) => {
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = time;
-                  }
-                }}
-              />
             </div>
 
-            {/* Timeline Summary Strip */}
-            {analysis && (
+            {mode === "samples" ? (
+              <div className="gallery-layout flex-1">
+                <div className="gallery-grid">
+                  {samples.map((sample) => (
+                    <button
+                      key={sample.id}
+                      className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
+                      onClick={() => selectSample(sample)}
+                    >
+                      <div className="gallery-thumb-container">
+                        <img src={absoluteApiUrl(sample.thumbnail_url)} alt={sample.title} />
+                        <div className="gallery-card-badge">{sample.dataset}</div>
+                      </div>
+                      <div className="gallery-info">
+                        <b>{sample.title}</b>
+                        <small>{sample.size_mb} MB</small>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {samples.length === 0 && (
+                  <div className="loading-gallery-spinner">
+                    <div className="pulse-loader" />
+                    <span>Contacting serverless registry...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="uploader-layout flex-1">
+                <label className="uploader-dropzone" htmlFor="console-video-upload">
+                  <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
+                  <span className="upload-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </span>
+                  <strong>Ingest local video container</strong>
+                  <small>MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Card 5: Pipeline Execution Profiler & Telemetry (col-span-8) */}
+          <div className="bento-card col-span-8 flex-col profiler-bento-card">
+            <div className="bento-card-header">
+              <h3>Pipeline Telemetry Profiler</h3>
+              {analysis && (
+                <span className={`hud-badge ${cacheStatus === "cached" ? "badge-green" : "badge-orange"}`}>
+                  {cacheStatus === "cached" ? "Local Cache hit" : "Live GPU execution"}
+                </span>
+              )}
+            </div>
+            
+            {analysis ? (
+              <div className="hud-stats-row flex-1">
+                <div className="hud-stat-box">
+                  <span>HARDWARE DEVICE</span>
+                  <strong>{cacheStatus === "cached" ? "Client Cache" : "NVIDIA T4 GPU"}</strong>
+                </div>
+                <div className="hud-stat-box">
+                  <span>ANALYSIS LATENCY</span>
+                  <strong>{cacheStatus === "cached" ? "0ms" : `${analysis.analysis.runtime_sec.toFixed(2)}s`}</strong>
+                </div>
+                <div className="hud-stat-box">
+                  <span>PROCESSING SPEED</span>
+                  <strong>
+                    {analysis.analysis.runtime_sec > 0
+                      ? `${(analysis.analysis.summary.sampled_frame_count / analysis.analysis.runtime_sec).toFixed(1)} FPS`
+                      : "N/A"}
+                  </strong>
+                </div>
+                <div className="hud-stat-box">
+                  <span>EMBEDDING TYPE</span>
+                  <strong>VideoMAE [768d]</strong>
+                </div>
+              </div>
+            ) : (
+              <div className="no-telemetry-placeholder flex-1">
+                Pipeline inactive. Ingest video source to read performance telemetry.
+              </div>
+            )}
+          </div>
+
+          {/* Card 6: Anomaly Timeline SVG Chart (col-span-12) */}
+          <div className="bento-card col-span-12 flex-col graph-bento-card">
+            <div className="bento-card-header">
+              <h3>Temporal Anomaly Score Sequence</h3>
+              {analysis && (
+                <small className="monospace-filename">{analysis.analysis.video_name}</small>
+              )}
+            </div>
+            
+            <TimelineChart
+              timeline={analysis?.analysis.timeline ?? null}
+              activeThreshold={activeThreshold}
+              activeAnomalyRegions={activeAnomalyRegions}
+              accent={analysis?.profile.accent ?? "#29d3ff"}
+              currentTime={currentTime}
+              onSeek={(time) => {
+                if (videoRef.current) {
+                  videoRef.current.currentTime = time;
+                }
+              }}
+            />
+          </div>
+
+          {/* Card 7: Anomaly Summary Metrics (col-span-12) */}
+          {analysis && (
+            <div className="col-span-12">
               <div className="summary-numbers-strip">
                 <div className="number-box">
                   <span>PEAK EXCEPTION SCORE</span>
@@ -1137,98 +1240,97 @@ export default function Page() {
                   <strong>{analysis.analysis.summary.clip_count}</strong>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Action Alert Log & Visual Evidence Grid side-by-side */}
-            {analysis && (
-              <div className="alert-evidence-split">
-                {/* Event Logs */}
-                <div className="card-panel event-log-card">
-                  <div className="card-header">
-                    <h3>Surveillance Alarm Log</h3>
-                    <small>{activeAnomalyRegions.length} events</small>
-                  </div>
-                  <div className="log-table-container">
-                    <table className="log-table">
-                      <thead>
-                        <tr>
-                          <th>EXCEPTION INTERVAL</th>
-                          <th>PEAK</th>
-                          <th>ACTION</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeAnomalyRegions.map((region, idx) => {
-                          // Find peak score in this segment range
-                          const timeline = analysis.analysis.timeline;
-                          const segmentScores = timeline.scores.slice(region.start_index, region.end_index + 1);
-                          const peakInSegment = segmentScores.length ? Math.max(...segmentScores) : 0;
-                          return (
-                            <tr key={idx} className="log-row">
-                              <td className="monospace-td">{region.start_time_sec.toFixed(2)}s - {region.end_time_sec.toFixed(2)}s</td>
-                              <td className="monospace-td text-red">{peakInSegment.toFixed(3)}</td>
-                              <td>
-                                <button
-                                  className="log-seek-btn"
-                                  onClick={() => {
-                                    if (videoRef.current) {
-                                      videoRef.current.currentTime = region.start_time_sec;
-                                      videoRef.current.play().catch(() => {});
-                                    }
-                                  }}
-                                >
-                                  SEEK FEED
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {activeAnomalyRegions.length === 0 && (
-                          <tr>
-                            <td colSpan={3} className="empty-log-row">
-                              No exceptions flagged under current sensitivity threshold.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Evidence frame list */}
-                <div className="card-panel evidence-card-list">
-                  <div className="card-header">
-                    <h3>High-Scoring Frame Evidence</h3>
-                  </div>
-                  <div className="evidence-scroller-grid">
-                    {analysis.analysis.frames.map((frame) => (
-                      <div
-                        key={`${frame.index}-${frame.timestamp_sec}`}
-                        className="frame-evidence-card"
-                        onClick={() => {
-                          if (videoRef.current) {
-                            videoRef.current.currentTime = frame.timestamp_sec;
-                            videoRef.current.play().catch(() => {});
-                          }
-                        }}
-                      >
-                        <div className="frame-image-wrapper">
-                          <img src={frame.image_data_url} alt={`Frame at ${frame.timestamp_sec}s`} />
-                          <div className="frame-card-overlay">
-                            <span>SEEK FRAME</span>
-                          </div>
-                        </div>
-                        <div className="frame-caption">
-                          <span>{frame.timestamp_sec.toFixed(2)}s</span>
-                          <strong>Score: {frame.score.toFixed(3)}</strong>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          {/* Card 8: Surveillance Alarm Log (col-span-6) */}
+          {analysis && (
+            <div className="bento-card col-span-6 flex-col">
+              <div className="bento-card-header">
+                <h3>Surveillance Alarm Log</h3>
+                <small>{activeAnomalyRegions.length} events</small>
               </div>
-            )}
-          </div>
+              <div className="log-table-container">
+                <table className="log-table">
+                  <thead>
+                    <tr>
+                      <th>EXCEPTION INTERVAL</th>
+                      <th>PEAK</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeAnomalyRegions.map((region, idx) => {
+                      const timeline = analysis.analysis.timeline;
+                      const segmentScores = timeline.scores.slice(region.start_index, region.end_index + 1);
+                      const peakInSegment = segmentScores.length ? Math.max(...segmentScores) : 0;
+                      return (
+                        <tr key={idx} className="log-row">
+                          <td className="monospace-td">{region.start_time_sec.toFixed(2)}s - {region.end_time_sec.toFixed(2)}s</td>
+                          <td className="monospace-td text-red">{peakInSegment.toFixed(3)}</td>
+                          <td>
+                            <button
+                              className="log-seek-btn"
+                              onClick={() => {
+                                if (videoRef.current) {
+                                  videoRef.current.currentTime = region.start_time_sec;
+                                  videoRef.current.play().catch(() => {});
+                                }
+                              }}
+                            >
+                              SEEK FEED
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {activeAnomalyRegions.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="empty-log-row">
+                          No exceptions flagged under current sensitivity threshold.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Card 9: High-Scoring Frame Evidence (col-span-6) */}
+          {analysis && (
+            <div className="bento-card col-span-6 flex-col">
+              <div className="bento-card-header">
+                <h3>High-Scoring Frame Evidence</h3>
+              </div>
+              <div className="evidence-scroller-grid">
+                {analysis.analysis.frames.map((frame) => (
+                  <div
+                    key={`${frame.index}-${frame.timestamp_sec}`}
+                    className="frame-evidence-card"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = frame.timestamp_sec;
+                        videoRef.current.play().catch(() => {});
+                      }
+                    }}
+                  >
+                    <div className="frame-image-wrapper">
+                      <img src={frame.image_data_url} alt={`Frame at ${frame.timestamp_sec}s`} />
+                      <div className="frame-card-overlay">
+                        <span>SEEK FRAME</span>
+                      </div>
+                    </div>
+                    <div className="frame-caption">
+                      <span>{frame.timestamp_sec.toFixed(2)}s</span>
+                      <strong>Score: {frame.score.toFixed(3)}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
         </div>
       </section>
 
