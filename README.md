@@ -1,4 +1,4 @@
-# ARGUS Stream A
+# ARGUS 
 
 **Unsupervised Video Anomaly Detection Platform**  
 Frame-level exception tracking in surveillance video using frozen **VideoMAE-v2** features, multiscale **MULDE** density estimation, GMM score calibration, and an interactive Grafana/Datadog-grade developer console.
