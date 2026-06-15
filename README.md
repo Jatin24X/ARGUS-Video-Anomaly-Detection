@@ -3,12 +3,11 @@
 Frame-level video anomaly detection with frozen VideoMAE features, MULDE-style density scoring, Avenue benchmark reporting, and a deployed Vercel + Modal inference stack.
 
 **Live demo:** https://anamolydetect.vercel.app  
-**GPU API:** https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run  
 **Primary benchmark:** Avenue frame-level evaluation
 
 ## Overview
 
-ARGUS Stream A detects abnormal moments in surveillance-style video by learning the distribution of normal temporal behavior. The system extracts clip embeddings with a frozen VideoMAE-v2 backbone, fits a one-class density scorer, and converts clip-level anomaly evidence into a frame-level timeline with visual evidence frames.
+ARGUS detects abnormal moments in surveillance-style video by learning the distribution of normal temporal behavior. The system extracts clip embeddings with a frozen VideoMAE-v2 backbone, fits a one-class density scorer, and converts clip-level anomaly evidence into a frame-level timeline with visual evidence frames.
 
 The repository contains the complete Stream A workflow: dataset metadata, feature extraction, model selection, evaluation scripts, saved reports, FastAPI inference, Modal GPU deployment, a Next.js frontend, sample videos, and tests.
 
