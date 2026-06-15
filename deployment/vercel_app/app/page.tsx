@@ -301,7 +301,6 @@ function TimelineChart({
     const plotX = x - padding.left;
     const pct = Math.max(0, Math.min(1, plotX / plotWidth));
     const targetTime = pct * chart.maxX;
-    setHoverTime(targetTime);
 
     let closestIdx = 0;
     let minDiff = Infinity;
@@ -312,6 +311,7 @@ function TimelineChart({
         closestIdx = i;
       }
     }
+    setHoverTime(timeline.timestamps_sec[closestIdx]);
     setHoverScore(timeline.scores[closestIdx]);
   };
 
@@ -347,19 +347,35 @@ function TimelineChart({
             <stop offset="0%" stopColor={accent} stopOpacity="0.25" />
             <stop offset="100%" stopColor={accent} stopOpacity="0.01" />
           </linearGradient>
+          <filter id="svg-chart-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
         {/* Y Axis Grid Lines */}
         {[0, 0.25, 0.5, 0.75, 1.0].map((tick) => (
-          <g key={tick}>
-            <line x1={padding.left} x2={width - padding.right} y1={chart.y(tick)} y2={chart.y(tick)} className="grid-line" />
+          <g key={`y-grid-${tick}`}>
+            <line x1={padding.left} x2={width - padding.right} y1={chart.y(tick)} y2={chart.y(tick)} className="grid-line" style={{ opacity: 0.5 }} />
             <text x={padding.left - 10} y={chart.y(tick) + 4} className="axis-text">{tick.toFixed(2)}</text>
           </g>
         ))}
 
-        {/* X Axis Ticks */}
+        {/* X Axis Dotted Grid Lines & Ticks */}
         {Array.from({ length: 6 }, (_, index) => (chart.maxX / 5) * index).map((tick) => (
-          <text key={tick} x={chart.x(tick)} y={height - 14} className="axis-text axis-x">{tick.toFixed(1)}s</text>
+          <g key={`x-grid-${tick}`}>
+            <line
+              x1={chart.x(tick)}
+              x2={chart.x(tick)}
+              y1={padding.top}
+              y2={height - padding.bottom}
+              className="grid-line-dotted"
+            />
+            <text x={chart.x(tick)} y={height - 14} className="axis-text axis-x">{tick.toFixed(1)}s</text>
+          </g>
         ))}
 
         {/* Dynamic Client Anomaly Regions */}
@@ -386,9 +402,17 @@ function TimelineChart({
           active cutoff ({activeThreshold.toFixed(2)})
         </text>
 
-        {/* Area & Line */}
+        {/* Area & Glowing Line */}
         <path d={chart.areaPath} fill="url(#timeline-fill)" />
-        <path d={chart.linePath} fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" />
+        <path
+          d={chart.linePath}
+          fill="none"
+          stroke={accent}
+          strokeWidth="3"
+          strokeLinecap="round"
+          className="timeline-svg-glow-line"
+          style={{ "--accent-glow": accent } as React.CSSProperties}
+        />
 
         {/* Playback tracking vertical line */}
         {currentTime !== undefined && currentTime > 0 && currentTime <= chart.maxX && (
@@ -410,6 +434,18 @@ function TimelineChart({
             y1={padding.top}
             y2={height - padding.bottom}
             className="hover-tracing-line"
+            pointerEvents="none"
+          />
+        )}
+
+        {/* Snapping sliding cursor dot */}
+        {hoverTime !== null && hoverScore !== null && (
+          <circle
+            cx={chart.x(hoverTime)}
+            cy={chart.y(hoverScore)}
+            r="6"
+            className="timeline-chart-cursor-dot"
+            style={{ "--accent": accent } as React.CSSProperties}
             pointerEvents="none"
           />
         )}
@@ -921,17 +957,20 @@ export default function Page() {
             <span className="terminal-title">system_spec.log</span>
           </div>
           <div className="terminal-body">
-            <pre>
-              <code>{`$ python -m src.inference.engine --profile avenue
-[system] loading VideoMAE-v2 backbone...
-[system] frozen ViT-Base params: 86.2M
-[system] score mode: GMM (1-component scaling)
-[system] smoothing: temporal Gaussian filter (sigma=13.0)
-[system] validation boundaries: benchmark-safe holdout protocol
-[system] inference target: 12.0 FPS (adaptive frame sampler)
-[system] ROI sector support: dynamic crop masking
-[system] serverless scaledown: 120s (auto-idle)
-[system] status: ready`}</code>
+            <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+              <code>
+                <span style={{ color: "#8b9eb0" }}>$ python -m src.inference.engine --profile avenue</span>{"\n"}
+                <span className="log-level-sys">[SYS]</span> loading VideoMAE-v2 backbone...{"\n"}
+                <span className="log-level-sys">[SYS]</span> frozen ViT-Base params: <span style={{ color: "#d19a66" }}>86.2M</span>{"\n"}
+                <span className="log-level-gpu">[GPU]</span> score mode: GMM (1-component scaling){"\n"}
+                <span className="log-level-gpu">[GPU]</span> smoothing: temporal Gaussian filter (sigma=<span style={{ color: "#d19a66" }}>13.0</span>){"\n"}
+                <span className="log-level-sys">[SYS]</span> validation: benchmark-safe holdout protocol{"\n"}
+                <span className="log-level-cpu">[CPU]</span> inference target: <span style={{ color: "#d19a66" }}>12.0 FPS</span> (adaptive frame sampler){"\n"}
+                <span className="log-level-sys">[SYS]</span> ROI sector support: dynamic crop masking{"\n"}
+                <span className="log-level-sys">[SYS]</span> serverless scaledown: <span style={{ color: "#d19a66" }}>120s</span> (auto-idle){"\n"}
+                <span className="log-level-gpu">[GPU]</span> status: <span style={{ color: "#98c379" }}>ready</span>
+                <span className="terminal-cursor" />
+              </code>
             </pre>
           </div>
         </div>
@@ -945,39 +984,41 @@ export default function Page() {
           <p>Click on any processing block below to inspect its data shape, function, and engineering justification.</p>
         </div>
 
-        <div className="pipeline-graph">
-          {pipelineNodes.map((node, index) => (
-            <div key={node.id} className="graph-node-container">
-              <button
-                id={`pipeline-node-btn-${node.id}`}
-                className={`graph-node-btn ${activeNode === node.id ? "node-active" : ""}`}
-                onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
-              >
-                <span className="node-num">0{index + 1}</span>
-                <span className="node-title">{node.name}</span>
-                <small className="node-subtitle">{node.subtitle}</small>
-              </button>
-              {index < pipelineNodes.length - 1 && (
-                <div className="graph-connector">
-                  <svg viewBox="0 0 32 12" className="connector-svg" style={{ width: "32px", height: "12px", overflow: "visible" }}>
-                    <path
-                      d="M0 6h26"
-                      fill="none"
-                      className={`flowing-line ${loading || activeNode === node.id || activeNode === pipelineNodes[index + 1]?.id ? "active-flow" : ""}`}
-                    />
-                    <path
-                      d="M22 2l4 4-4 4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="pipeline-graph-wrapper">
+          <div className="pipeline-graph">
+            {pipelineNodes.map((node, index) => (
+              <div key={node.id} className="graph-node-container">
+                <button
+                  id={`pipeline-node-btn-${node.id}`}
+                  className={`graph-node-btn ${activeNode === node.id ? "node-active" : ""}`}
+                  onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
+                >
+                  <span className="node-num">0{index + 1}</span>
+                  <span className="node-title">{node.name}</span>
+                  <small className="node-subtitle">{node.subtitle}</small>
+                </button>
+                {index < pipelineNodes.length - 1 && (
+                  <div className="graph-connector">
+                    <svg viewBox="0 0 32 12" className="connector-svg" style={{ width: "32px", height: "12px", overflow: "visible" }}>
+                      <path
+                        d="M0 6h26"
+                        fill="none"
+                        className={`flowing-line ${loading || activeNode === node.id || activeNode === pipelineNodes[index + 1]?.id ? "active-flow" : ""}`}
+                      />
+                      <path
+                        d="M22 2l4 4-4 4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Selected Node Details IDE Drawer */}
@@ -1039,7 +1080,7 @@ export default function Page() {
         <div className="bento-grid">
           
           {/* Card 1: Video Player & Bounding Overlays (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col player-bento-card" onMouseMove={handleCardMouseMove}>
+          <div className="bento-card col-span-8 flex-col player-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 0 } as React.CSSProperties}>
             <div className="bento-card-header">
               <h3>Surveillance Feed Monitor</h3>
               <span className="panel-badge-status">
@@ -1087,7 +1128,7 @@ export default function Page() {
           </div>
 
           {/* Card 2: Configuration & Parameters (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove}>
+          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 1 } as React.CSSProperties}>
             <div className="bento-card-header">
               <h3>Pipeline Parameters</h3>
             </div>
@@ -1141,6 +1182,7 @@ export default function Page() {
                   value={thresholdPercentile}
                   onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
                   className="console-range-slider"
+                  style={{ "--slider-percent": `${(thresholdPercentile - 50) / 49 * 100}%` } as React.CSSProperties}
                 />
                 <small className="slider-hint">
                   Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
@@ -1196,7 +1238,7 @@ export default function Page() {
           </div>
 
           {/* Card 4: Video Intake & Sample Gallery (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col gallery-bento-card" onMouseMove={handleCardMouseMove}>
+          <div className="bento-card col-span-4 flex-col gallery-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 2 } as React.CSSProperties}>
             <div className="bento-card-header">
               <h3>Video Intake Source</h3>
               <div className="tab-buttons">
@@ -1252,7 +1294,7 @@ export default function Page() {
           </div>
 
           {/* Card 5: Pipeline Execution Profiler & Telemetry (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col profiler-bento-card" onMouseMove={handleCardMouseMove}>
+          <div className="bento-card col-span-8 flex-col profiler-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 3 } as React.CSSProperties}>
             <div className="bento-card-header">
               <h3>Pipeline Telemetry Profiler</h3>
               {analysis && (
@@ -1311,7 +1353,7 @@ export default function Page() {
           </div>
 
           {/* Card 6: Anomaly Timeline SVG Chart (col-span-12) */}
-          <div className="bento-card col-span-12 flex-col graph-bento-card" onMouseMove={handleCardMouseMove}>
+          <div className="bento-card col-span-12 flex-col graph-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 4 } as React.CSSProperties}>
             <div className="bento-card-header">
               <h3>Temporal Anomaly Score Sequence</h3>
               {analysis && (
@@ -1359,7 +1401,7 @@ export default function Page() {
 
           {/* Card 8: Surveillance Alarm Log (col-span-6) */}
           {analysis && (
-            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove}>
+            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 5 } as React.CSSProperties}>
               <div className="bento-card-header">
                 <h3>Surveillance Alarm Log</h3>
                 <small>{activeAnomalyRegions.length} events</small>
@@ -1413,7 +1455,7 @@ export default function Page() {
 
           {/* Card 9: High-Scoring Frame Evidence (col-span-6) */}
           {analysis && (
-            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove}>
+            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 6 } as React.CSSProperties}>
               <div className="bento-card-header">
                 <h3>High-Scoring Frame Evidence</h3>
               </div>

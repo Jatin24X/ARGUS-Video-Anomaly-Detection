@@ -35,11 +35,14 @@ body {
   min-height: 100vh;
   color: var(--ink);
   font-family: "Manrope", sans-serif;
-  background-color: var(--bg);
-  background-image: 
-    radial-gradient(circle at 10% 10%, rgba(41, 211, 255, 0.07), transparent 30rem),
-    radial-gradient(circle at 90% 20%, rgba(101, 240, 182, 0.05), transparent 28rem),
-    radial-gradient(circle at 50% 80%, rgba(255, 178, 95, 0.03), transparent 35rem);
+  background-color: #03070b;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.009) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.009) 1px, transparent 1px),
+    radial-gradient(circle at 10% 10%, rgba(41, 211, 255, 0.08), transparent 35rem),
+    radial-gradient(circle at 90% 20%, rgba(101, 240, 182, 0.06), transparent 30rem),
+    radial-gradient(circle at 50% 80%, rgba(255, 178, 95, 0.04), transparent 40rem);
+  background-size: 32px 32px, 32px 32px, 100%, 100%, 100%;
   background-attachment: fixed;
 }
 
@@ -916,26 +919,35 @@ p {
 .console-range-slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border);
+  height: 5px;
+  border-radius: 99px;
+  background: linear-gradient(
+    to right,
+    var(--cyan) 0%,
+    var(--mint) var(--slider-percent, 70%),
+    var(--border) var(--slider-percent, 70%),
+    var(--border) 100%
+  );
   outline: none;
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .console-range-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--cyan);
+  background: #fff;
+  border: 2px solid var(--cyan);
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(41, 211, 255, 0.4);
-  transition: transform 0.1s ease;
+  box-shadow: 0 0 12px rgba(41, 211, 255, 0.8);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
 }
 
 .console-range-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
+  transform: scale(1.3);
+  box-shadow: 0 0 16px rgba(41, 211, 255, 1);
 }
 
 .slider-hint {
@@ -1485,16 +1497,18 @@ p {
 
 .bento-card {
   display: flex;
-  background: rgba(10, 15, 24, 0.6);
+  background: linear-gradient(135deg, rgba(8, 12, 18, 0.6) 0%, rgba(4, 6, 10, 0.8) 100%);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
   padding: 24px;
-  box-shadow: inset 0 -4px 12px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.37);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: 0s, 0s, calc(var(--card-index, 0) * 80ms), calc(var(--card-index, 0) * 80ms);
   position: relative;
   overflow: hidden;
   --mouse-x: 0px;
@@ -1508,7 +1522,7 @@ p {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), transparent);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), transparent);
   pointer-events: none;
   z-index: 2;
 }
@@ -1519,7 +1533,7 @@ p {
   inset: 0;
   background: radial-gradient(
     300px circle at var(--mouse-x) var(--mouse-y),
-    rgba(41, 211, 255, 0.06),
+    rgba(41, 211, 255, 0.08),
     transparent 80%
   );
   opacity: 0;
@@ -1529,12 +1543,21 @@ p {
 }
 
 .bento-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(41, 211, 255, 0.3);
-  box-shadow: inset 0 -4px 12px rgba(0,0,0,0.3), 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 24px rgba(41, 211, 255, 0.08);
+  transform: translateY(-4px);
+  border-color: rgba(41, 211, 255, 0.35);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 20px rgba(41, 211, 255, 0.06);
 }
 
 .bento-card:hover::after {
+  opacity: 1;
+}
+
+.scroll-reveal:not(.visible) .bento-card {
+  opacity: 0 !important;
+  transform: translateY(24px) !important;
+}
+
+.scroll-reveal.visible .bento-card {
   opacity: 1;
 }
 
@@ -1876,4 +1899,92 @@ p {
 .live-stream-logs .log-danger {
   color: var(--red);
   font-weight: 700;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   11/10 Premium visual redone extensions
+   ────────────────────────────────────────────────────────────────────── */
+
+.pipeline-graph-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  padding: 16px 4px;
+  margin-bottom: 8px;
+  scroll-behavior: smooth;
+}
+
+.pipeline-graph-wrapper::-webkit-scrollbar {
+  height: 4px;
+}
+
+.pipeline-graph-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: 99px;
+}
+
+.pipeline-graph-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(41, 211, 255, 0.15);
+  border-radius: 99px;
+}
+
+.pipeline-graph-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(41, 211, 255, 0.35);
+}
+
+.pipeline-graph {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 1100px;
+  gap: 12px;
+}
+
+.timeline-svg-glow-line {
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+
+.grid-line-dotted {
+  stroke: rgba(148, 163, 184, 0.07);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.axis-tick-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: #4e6370;
+}
+
+.timeline-chart-cursor-dot {
+  fill: var(--accent);
+  stroke: #03070b;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px var(--accent));
+  transition: r 0.15s ease;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--mint);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.log-level-sys {
+  color: #569cd6;
+}
+
+.log-level-gpu {
+  color: var(--mint);
+}
+
+.log-level-cpu {
+  color: var(--orange);
 }
