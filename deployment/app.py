@@ -223,6 +223,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
     def analyze_sample(
         sample_id: str,
         profile: str | None = None,
+        roi_sector: str = "full",
     ) -> dict[str, object]:
         path = _sample_path(sample_id)
         catalog_entry = next(
@@ -231,7 +232,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
         profile_label = _resolve_profile_label(profile or str(catalog_entry["profile"]))
         started = time.perf_counter()
         try:
-            payload = ENGINE.analyze_payload(path, profile_label)
+            payload = ENGINE.analyze_payload(path, profile_label, roi_sector=roi_sector)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except FileNotFoundError as exc:
@@ -241,6 +242,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
             "profile": profile_label,
             "filename": path.name,
             "sample_id": sample_id,
+            "roi_sector": roi_sector,
         }
         LOGGER.info(
             "sample_analysis sample=%s profile=%s elapsed=%.2fs",
@@ -253,6 +255,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
     @app.post("/analyze")
     async def analyze(
         profile: str = Form(...),
+        roi_sector: str = Form("full"),
         video: UploadFile = File(...),
     ) -> dict[str, object]:
         profile_label = _resolve_profile_label(profile)
@@ -291,10 +294,11 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
                         )
                     temp_file.write(chunk)
 
-            payload = ENGINE.analyze_payload(temp_path, profile_label)
+            payload = ENGINE.analyze_payload(temp_path, profile_label, roi_sector=roi_sector)
             payload["request"] = {
                 "profile": profile_label,
                 "filename": filename,
+                "roi_sector": roi_sector,
             }
             LOGGER.info(
                 "upload_analysis filename=%s profile=%s bytes=%d elapsed=%.2fs",

@@ -26,7 +26,7 @@ image = (
             "ARGUS_STREAM_A_DEVICE": "cuda",
             "ARGUS_STREAM_A_BATCH_SIZE": "6",
             "ARGUS_STREAM_A_PUBLIC_API_URL": (
-                "https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run"
+                "https://jatinsheoran2412--argus-stream-a-api-argusapi-fastapi-app.modal.run"
             ),
         }
     )
@@ -42,6 +42,10 @@ image = (
             "*.md",
             "*.txt",
             "*.bat",
+            "**/node_modules",
+            "**/.next",
+            "**/.vercel",
+            "**/.git",
         ],
     )
     .workdir(REMOTE_ROOT)
@@ -63,27 +67,31 @@ def prime_backbone_cache() -> str:
     return "Backbone cache warmed"
 
 
-@app.function(
+@app.cls(
     gpu="T4",
     timeout=30 * 60,
     max_containers=1,
     min_containers=0,
-    scaledown_window=15 * 60,
+    scaledown_window=120,  # Scaledown after 2 minutes of idle time to save costs
     volumes={CACHE_DIR: hf_cache_volume},
 )
-@modal.asgi_app()
-def fastapi_app():
-    os.environ.setdefault("ARGUS_STREAM_A_ROOT", REMOTE_ROOT)
-    os.environ.setdefault("HF_HOME", CACHE_DIR)
-    os.environ.setdefault("TRANSFORMERS_CACHE", CACHE_DIR)
-    os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
-    os.environ.setdefault("ARGUS_STREAM_A_DEVICE", "cuda")
-    os.environ.setdefault("ARGUS_STREAM_A_BATCH_SIZE", "6")
+class ArgusAPI:
+    @modal.enter()
+    def startup(self):
+        os.environ.setdefault("ARGUS_STREAM_A_ROOT", REMOTE_ROOT)
+        os.environ.setdefault("HF_HOME", CACHE_DIR)
+        os.environ.setdefault("TRANSFORMERS_CACHE", CACHE_DIR)
+        os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+        os.environ.setdefault("ARGUS_STREAM_A_DEVICE", "cuda")
+        os.environ.setdefault("ARGUS_STREAM_A_BATCH_SIZE", "6")
 
-    from deployment.app import create_fastapi_app, preload_profiles
+        from deployment.app import preload_profiles
+        preload_profiles(include_extractor=True)
 
-    preload_profiles(include_extractor=True)
-    return create_fastapi_app(preload=False)
+    @modal.asgi_app()
+    def fastapi_app(self):
+        from deployment.app import create_fastapi_app
+        return create_fastapi_app(preload=False)
 
 
 @app.local_entrypoint()

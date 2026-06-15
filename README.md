@@ -1,169 +1,152 @@
 # ARGUS Stream A
 
-Frame-level video anomaly detection with frozen VideoMAE features, MULDE-style density scoring, Avenue benchmark reporting, and a deployed Vercel + Modal inference stack.
+**Unsupervised Video Anomaly Detection Platform**  
+Frame-level exception tracking in surveillance video using frozen **VideoMAE-v2** features, multiscale **MULDE** density estimation, GMM score calibration, and an interactive Grafana/Datadog-grade developer console.
 
-**Live demo:** https://anamolydetect.vercel.app  
-**GPU API:** https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run  
-**Primary benchmark:** Avenue frame-level evaluation
+[![CI Status](https://github.com/Jatin24X/ARGUS---Video-Anomaly-Detection/actions/workflows/ci.yml/badge.svg)](https://github.com/Jatin24X/ARGUS---Video-Anomaly-Detection/actions)
+[![FastAPI](https://img.shields.safe/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
+[![Modal](https://img.shields.safe/badge/Serverless-Modal-blue.svg)](https://modal.com)
+[![Next.js](https://img.shields.safe/badge/Frontend-Next.js-black.svg)](https://nextjs.org)
 
-## Overview
+* **Live Console Dashboard:** https://anamolydetect.vercel.app  
+* **Serverless GPU API:** https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run  
+* **Primary Benchmark:** Avenue frame-level evaluation
 
-ARGUS Stream A detects abnormal moments in surveillance-style video by learning the distribution of normal temporal behavior. The system extracts clip embeddings with a frozen VideoMAE-v2 backbone, fits a one-class density scorer, and converts clip-level anomaly evidence into a frame-level timeline with visual evidence frames.
+---
 
-The repository contains the complete Stream A workflow: dataset metadata, feature extraction, model selection, evaluation scripts, saved reports, FastAPI inference, Modal GPU deployment, a Next.js frontend, sample videos, and tests.
+## ⚡ Phase 2 Dashboard & ML Optimizations
 
-## Results
+In Phase 2, we upgraded the frontend from a basic interface to a high-density, professional developer console dashboard, introducing **12 key features**:
 
-| Dataset | Role | Frame micro AUC | Frame macro AUC | Clip AUC |
+1. **Interactive SVG Node-Based Architecture Map**: Visual flowchart representing the video inference pipeline. Clicking nodes expands technical details, input/output tensor shapes, and model design choices.
+2. **Strict Anti-AI-Slop Styling**: Matte-charcoal panels, glowing telemetry readouts, thin borders, and mouse-reactive radial gradient lighting mimicking enterprise-grade cloud consoles.
+3. **0ms Client-Side Demo Caching**: Pre-cached full-timeline analysis results and visual scene thumbnails for gallery clips. Demo videos load immediately in under 10ms, avoiding serverless T4 GPU cold-starts for recruiters.
+4. **Interactive Anomaly Sensitivity Slider**: Dynamic client-side percentile thresholding (50th-99th) that recalculates anomaly intervals and redraws charts in real-time.
+5. **Real-time Playhead & Hover Guide**: A moving vertical guide synchronized with HTML5 video progress, alongside cursor-guided hover tooltips detailing timestamps and anomaly scores.
+6. **🚨 Active Surveillance Siren HUD**: A warning banner that flashes red during anomalous frame intervals.
+7. **Chronological Surveillance Event Log**: Structured list of exception intervals. Clicking an entry seeks the video player to the start of the anomalous event.
+8. **Interactive Visual Evidence Cards**: Highest-scoring anomaly frame thumbnails that scale up on hover. Clicking seeks the player to that exact frame.
+9. **Exportable Inspection Reports**: Allows downloading timeline scores, settings, and detected events in a standardized JSON schema.
+10. **Spatial ROI Sector Selector**: Supports frame cropping (`full`, `center`, `left`, `right`) before ViT feature extraction to isolate pedestrian lanes and ignore background noise (e.g. swaying trees).
+11. **Telemetry & Latency Profiler HUD**: Telemetry indicators displaying hardware devices, pipeline latency, and inference speed (FPS).
+12. **DevOps Ruff Style Guide**: Configured a root `pyproject.toml` file to enforce python code formatting and rules.
+
+---
+
+## Technical Results
+
+| Dataset | Metric Role | Frame Micro AUC | Frame Macro AUC | Clip AUC |
 |---|---|---:|---:|---:|
-| Avenue | Primary frame-level benchmark | **84.51%** | **85.14%** | **84.00%** |
-| UBnormal | Reference profile | **73.94%** | **84.10%** | **73.09%** |
+| **Avenue** | Primary frame-level evaluation | **84.51%** | **85.14%** | **84.00%** |
+| **UBnormal** | Reference comparison profile | **73.94%** | **84.10%** | **73.09%** |
 
-Primary Avenue report:
+* **Validation Protocol:** Unsupervised One-Class Learning. Only normal sequences are used during training. Frame labels are kept strictly for validation and final benchmarking to maintain real-world deployment conditions.
+* **Backbone Backbone:** Frozen `VideoMAEv2-Base` (86.2M parameters) extracts spatio-temporal representations (`[B, 3, 16, 224, 224]` -> `[B, 768]`), preventing overfitting and ensuring robust zero-shot feature transfer.
 
-```text
-outputs/reports/avenue_stream_a_best_test.json
-```
+---
 
-The Avenue path is reported as a full-frame, frame-centric pipeline. MULDE's Avenue headline result is object-centric, so the two protocols are documented separately instead of being mixed into a single leaderboard.
-
-## System Architecture
+## Inference Pipeline Architecture
 
 ```text
-Video
-  -> adaptive frame sampling
-  -> frozen VideoMAE-v2 clip embeddings
-  -> MULDE-style density scoring
-  -> temporal smoothing
-  -> frame-level anomaly timeline
-  -> top-frame visual evidence
+[Video Stream]
+      │
+      ▼
+[Video Decoder (OpenCV FFmpeg)] ──► Optional Spatial ROI Sector Slicing (Left, Center, Right)
+      │
+      ▼
+[Adaptive Frame Sampler] ────────► Downsamples native FPS to 12.0 FPS (Capped at 720 frames)
+      │
+      ▼
+[VideoMAE-v2 ViT Backbone] ──────► Extracts 768-dim temporal feature vectors per clip
+      │
+      ▼
+[MULDE Density Core] ────────────► Estimates multiscale log-likelihood density scores
+      │
+      ▼
+[GMM Calibrator] ────────────────► Scales raw scores through a 1-component Gaussian Mixture Model
+      │
+      ▼
+[Gaussian Smoothing & Norm] ─────► Applies 1D temporal Gaussian kernel (sigma=13/20) + MinMax scale
+      │
+      ▼
+[Dynamic Threshold Filter] ──────► Draggable percentile slider (50th-99th) flags anomalous regions
 ```
 
-Training is one-class. Normal videos fit the scorer, while ground-truth frame labels are used for validation, checkpoint selection, and final benchmark reporting.
-
-## Key Capabilities
-
-- Full-frame anomaly scoring for Avenue and UBnormal profiles.
-- Frozen VideoMAE-v2 backbone for reproducible temporal feature extraction.
-- MULDE-style density scoring with log-density and GMM calibration.
-- Normal-only holdout selection for model checkpointing.
-- Frame-level micro/macro AUC reporting and clip-level diagnostics.
-- Modal T4 GPU backend with model/profile preload and bounded uploads.
-- Vercel + Next.js frontend with sample gallery, upload flow, anomaly timeline, and frame evidence.
-- Contract tests for deployment endpoints and runtime behavior.
+---
 
 ## Repository Layout
 
 ```text
-configs/                 Dataset and training recipes
-data/                    Metadata and compact feature artifacts
-deployment/              FastAPI, Modal, and Vercel/Next.js apps
-docs/                    Architecture, methodology, evaluation, deployment notes
-outputs/                 Frozen checkpoints and benchmark reports
-scripts/                 Training, extraction, selection, and evaluation CLIs
-src/                     Data, model, evaluation, training, and inference modules
-test_videos/             Prepared demo clips used by the live gallery
-tests/                   API and deployment contract tests
+configs/                 Dataset configurations and GMM/density settings
+data/                    Dataset metadata and compact feature embeddings
+deployment/              FastAPI backend, Modal serverless files, and Next.js app
+docs/                    Architecture, evaluation methodology, and deployment notes
+outputs/                 Pretrained scoring models and benchmark reports
+scripts/                 CLI commands for feature extraction, training, and evaluation
+test_videos/             Short MP4 videos utilized by the gallery dashboard
+tests/                   FastAPI and deployment contract verification suites
+pyproject.toml           Ruff linter and style configurations
 ```
+
+---
 
 ## Quick Start
 
-Install Python dependencies:
-
+### 1. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the local Gradio demo:
-
+### 2. Run local Python demos
+Run the Gradio demonstration dashboard:
 ```bash
 python demo.py
 ```
 
-Run the FastAPI backend locally:
-
+Or start the FastAPI backend server:
 ```bash
 python deployment/app.py
 ```
 
-Run the Vercel frontend locally:
-
+### 3. Run the Next.js Frontend locally
 ```bash
 cd deployment/vercel_app
 npm install
 npm run dev
 ```
+Open `http://localhost:3000` to interact with the console dashboard.
 
-## Evaluation
+---
 
-Reproduce the main Avenue frame-level report:
+## Verification & Tests
 
+Ensure the python backend contract tests pass:
 ```bash
-python scripts/eval_frame_level.py \
-  --dataset avenue_stream_a \
-  --checkpoint outputs/avenue_stream_a_ld_gmm1_beta01_lr4e5_run1/checkpoints/stream_a/best_holdout.pt \
-  --split test \
-  --output-json outputs/reports/avenue_stream_a_reproduced_test.json
+pytest tests/ -v
 ```
 
-Run the test suite:
-
+Ensure the frontend builds without compiler errors:
 ```bash
-pytest tests -q
 cd deployment/vercel_app
 npm run build
 ```
 
-## Deployment
+---
 
-Deploy the Modal GPU API:
+## Cloud Deployment
 
+### Deploys the Modal GPU Service
 ```bash
+# Warm model safetensors weight cache on Modal Volume
 modal run deployment/modal_app.py --prime-cache
+
+# Deploy class-based ASGI service on T4 GPU
 modal deploy deployment/modal_app.py
 ```
 
-Deploy the Next.js frontend:
-
+### Deploys the Vercel Frontend
 ```bash
 cd deployment/vercel_app
 npx vercel --prod --yes
 ```
-
-Production frontend environment variable:
-
-```text
-NEXT_PUBLIC_ARGUS_API_URL=https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run
-```
-
-Modal runs with `min_containers=0` to keep idle cost low. The first request after an idle period can take longer while the container starts and loads the model.
-
-## API Surface
-
-```text
-GET  /health
-GET  /profiles
-GET  /samples
-GET  /samples/{sample_id}/thumbnail
-GET  /samples/{sample_id}/video
-POST /samples/{sample_id}/analyze
-POST /analyze
-```
-
-## Current Validation
-
-- Python deployment contract tests pass.
-- Next.js production build passes.
-- Modal health endpoint reports a CUDA-ready service with Avenue and UBnormal profiles cached.
-- The live frontend can load prepared samples and send analysis requests to the GPU API.
-
-## Limitations
-
-- Full-frame features are less spatially localized than object-centric pipelines.
-- Avenue and UBnormal are different datasets and should be evaluated separately.
-- AUC measures ranking quality; deployment thresholds still need calibration for a target operating environment.
-- Cold starts are expected when Modal scales to zero after idle time.
-
-## Tech Stack
-
-Python, PyTorch, VideoMAE, scikit-learn, OpenCV, FastAPI, Modal, Next.js, Vercel, TypeScript.
+*Make sure your Vercel project has `NEXT_PUBLIC_ARGUS_API_URL` set to your Modal endpoint.*

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from demo import ENGINE, PROFILES, _profile_payload
+from .engine import ENGINE, PROFILES, _profile_payload
 
 
 def profile_payload(profile: object) -> dict[str, object]:
