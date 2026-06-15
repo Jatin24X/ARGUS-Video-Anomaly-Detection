@@ -782,10 +782,10 @@ export default function Page() {
           </div>
         </a>
         <nav className="console-nav">
-          <a href="#pipeline-section">Architecture Map</a>
-          <a href="#dashboard-section">Surveillance HUD</a>
-          <a href="#faq-section">Developer QA</a>
-          <a href={REPO_URL} target="_blank" rel="noreferrer" className="git-link">GitHub Repository</a>
+          <a id="nav-link-architecture" href="#pipeline-section">Architecture Map</a>
+          <a id="nav-link-dashboard" href="#dashboard-section">Surveillance HUD</a>
+          <a id="nav-link-qa" href="#faq-section">Developer QA</a>
+          <a id="nav-link-github" href={REPO_URL} target="_blank" rel="noreferrer" className="git-link">GitHub Repository</a>
         </nav>
         <div className="console-status">
           {cacheStatus === "cached" ? (
@@ -873,6 +873,7 @@ export default function Page() {
           {pipelineNodes.map((node, index) => (
             <div key={node.id} className="graph-node-container">
               <button
+                id={`pipeline-node-btn-${node.id}`}
                 className={`graph-node-btn ${activeNode === node.id ? "node-active" : ""}`}
                 onClick={() => setActiveNode(activeNode === node.id ? null : node.id)}
               >
@@ -898,7 +899,7 @@ export default function Page() {
                 <div className="drawer-inner">
                   <div className="drawer-header">
                     <h3>{node.name} <span className="drawer-subtitle">({node.subtitle})</span></h3>
-                    <button className="drawer-close" onClick={() => setActiveNode(null)}>×</button>
+                    <button id="pipeline-drawer-close" className="drawer-close" onClick={() => setActiveNode(null)}>×</button>
                   </div>
                   <div className="drawer-content-grid">
                     <div className="drawer-left-col">
@@ -1008,6 +1009,7 @@ export default function Page() {
                   {profiles.map((p) => (
                     <button
                       key={p.key}
+                      id={`profile-select-btn-${p.key}`}
                       className={selectedKey === p.key ? "profile-active-btn" : ""}
                       onClick={() => {
                         setSelectedKey(p.key);
@@ -1026,6 +1028,7 @@ export default function Page() {
                   {["full", "left", "center", "right"].map((sector) => (
                     <button
                       key={sector}
+                      id={`roi-sector-btn-${sector}`}
                       className={roiSector === sector ? "sector-active-btn" : ""}
                       onClick={() => handleRoiChange(sector)}
                     >
@@ -1042,6 +1045,7 @@ export default function Page() {
                 </div>
                 <input
                   type="range"
+                  id="sensitivity-threshold-slider"
                   min="50"
                   max="99"
                   value={thresholdPercentile}
@@ -1055,6 +1059,7 @@ export default function Page() {
 
               <div className="action-buttons-strip">
                 <button
+                  id="action-btn-analyze"
                   className="console-btn-primary"
                   disabled={loading || !selectedProfile || (!selectedSample && !videoFile)}
                   onClick={runLiveAnalysis}
@@ -1063,7 +1068,7 @@ export default function Page() {
                 </button>
 
                 {analysis && (
-                  <button className="console-btn-secondary" onClick={handleExportJSON}>
+                  <button id="action-btn-export" className="console-btn-secondary" onClick={handleExportJSON}>
                     Export Report
                   </button>
                 )}
@@ -1105,8 +1110,8 @@ export default function Page() {
             <div className="bento-card-header">
               <h3>Video Intake Source</h3>
               <div className="tab-buttons">
-                <button className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Sample Gallery</button>
-                <button className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload File</button>
+                <button id="tab-btn-gallery" className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Sample Gallery</button>
+                <button id="tab-btn-upload" className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload File</button>
               </div>
             </div>
 
@@ -1116,6 +1121,7 @@ export default function Page() {
                   {samples.map((sample) => (
                     <button
                       key={sample.id}
+                      id={`gallery-sample-card-${sample.id}`}
                       className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
                       onClick={() => selectSample(sample)}
                     >
@@ -1346,6 +1352,7 @@ export default function Page() {
           {recruiterQAs.map((qa, index) => (
             <div key={index} className="faq-item">
               <button
+                id={`faq-question-btn-${index}`}
                 className="faq-question-btn"
                 onClick={() => setQaOpen(qaOpen === index ? null : index)}
               >
