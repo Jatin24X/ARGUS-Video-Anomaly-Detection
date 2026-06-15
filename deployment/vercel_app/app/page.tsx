@@ -73,17 +73,17 @@ const REPO_URL = "https://github.com/Jatin24X/ARGUS---Video-Anomaly-Detection";
 const ALLOWED_EXTENSIONS = [".mp4", ".avi", ".mov", ".mkv", ".webm"];
 
 const projectStats = [
-  ["84.51%", "Avenue frame micro AUC"],
-  ["85.14%", "Avenue frame macro AUC"],
-  ["+7.13", "AUC points over bring-up baseline"],
-  ["7", "ready-to-run demo videos"],
+  ["84.51%", "Avenue micro AUC"],
+  ["85.14%", "Avenue macro AUC"],
+  ["T4", "live GPU inference"],
+  ["7", "prepared video samples"],
 ];
 
 const engineeringHighlights = [
-  "One-class anomaly detection: normal videos train the scorer; labels are reserved for evaluation.",
-  "Frozen VideoMAE-v2 features plus MULDE density scoring keep the system reproducible and compute efficient.",
-  "Avenue frame-centric path added end-to-end with validated labels, feature extraction, and benchmark reports.",
-  "Production inference runs on Modal T4 with model preload, persistent Hugging Face cache, and bounded uploads.",
+  "Normal-only training: labels are reserved for validation and final benchmark reporting.",
+  "Frozen VideoMAE-v2 embeddings provide stable temporal features without backbone fine-tuning.",
+  "MULDE-style density scoring ranks low-likelihood clips as anomalous frame evidence.",
+  "FastAPI, Modal, and Vercel serve the same scorer through sample and upload workflows.",
 ];
 
 const pipelineSteps = [
@@ -317,12 +317,12 @@ export default function Page() {
 
       <section id="top" className="hero">
         <div className="hero-copy">
-          <div className="eyebrow">Portfolio-grade ML system</div>
-          <h1>Frame-level anomaly detection, deployed end to end.</h1>
+          <div className="eyebrow">Video anomaly intelligence</div>
+          <h1>Find abnormal moments in video with a deployed density pipeline.</h1>
           <p>
-            ARGUS learns normal video behavior, scores unusual temporal patterns, and turns the output into a
-            live anomaly timeline with visual evidence. The project includes training, evaluation, FastAPI
-            inference, Modal GPU deployment, and a Vercel frontend.
+            ARGUS Stream A ranks frame-level anomaly evidence from surveillance-style video. The system
+            combines frozen VideoMAE features, MULDE-style density scoring, calibrated Avenue evaluation,
+            and live GPU inference behind a polished web interface.
           </p>
           <div className="hero-actions">
             <a className="button primary" href="#demo">Run live demo</a>
@@ -330,11 +330,11 @@ export default function Page() {
           </div>
         </div>
         <div className="hero-panel">
-          <div className="panel-label">Main contribution</div>
-          <h2>Avenue frame-centric path: 77.38% to 84.51% micro AUC</h2>
+          <div className="panel-label">Avenue benchmark path</div>
+          <h2>84.51% frame micro AUC on Avenue.</h2>
           <p>
-            Implemented a reproducible Avenue pipeline and improved it through scoring-surface correction,
-            normal-only checkpoint selection, temporal calibration, and stable GMM fitting.
+            The Avenue path includes metadata validation, feature extraction, normal-only model selection,
+            GMM score calibration, temporal smoothing, and benchmark-safe reporting.
           </p>
         </div>
       </section>
@@ -351,7 +351,7 @@ export default function Page() {
       <section className="story-grid">
         <article className="story-card">
           <span className="section-tag">Problem</span>
-          <h2>Detect abnormal moments without training on anomaly examples.</h2>
+          <h2>Detect abnormal moments without learning anomaly classes.</h2>
           <p>
             Stream A is one-class: only normal videos train the density scorer. Frame labels are kept for
             evaluation, which makes the setup closer to real surveillance deployment constraints.
@@ -359,10 +359,10 @@ export default function Page() {
         </article>
         <article className="story-card accent-card">
           <span className="section-tag">Fair comparison</span>
-          <h2>Frame-centric result, not an object-centric leaderboard claim.</h2>
+          <h2>Clear protocol boundary between full-frame and object-centric evaluation.</h2>
           <p>
-            The MULDE paper's Avenue headline is object-centric. This project honestly reports a full-frame,
-            frame-level Stream A pipeline and documents the protocol difference instead of mixing numbers.
+            MULDE's Avenue headline is object-centric. ARGUS Stream A reports the full-frame path separately,
+            so the evaluation surface stays precise and comparable within its own protocol.
           </p>
         </article>
       </section>
@@ -387,11 +387,11 @@ export default function Page() {
       <section id="demo" className="demo-header">
         <div>
           <span className="section-tag">Live inference</span>
-          <h2>Try a prepared sample or upload your own clip.</h2>
+          <h2>Run a prepared sample or upload a short clip.</h2>
         </div>
         <p>
-          The prepared gallery runs directly on server-side test videos, so recruiters can test the system
-          without finding their own surveillance clip first.
+          The sample gallery runs directly on server-side test videos. Uploaded clips are validated,
+          analyzed on the GPU service, and converted into a timeline with visual evidence.
         </p>
       </section>
 
@@ -489,8 +489,8 @@ export default function Page() {
       <section id="engineering" className="engineering">
         <div className="section-heading wide">
           <div>
-            <span>What recruiters should notice</span>
-            <h2>Not just a notebook: a deployed ML system.</h2>
+            <span>Engineering surface</span>
+            <h2>Model, API, deployment, and evidence UI in one system.</h2>
           </div>
         </div>
         <div className="highlight-grid">
@@ -505,8 +505,8 @@ export default function Page() {
 
       <section className="repo-banner">
         <div>
-          <span className="section-tag">Open source package</span>
-          <h2>Code, docs, reports, deployment scripts, and tests are packaged for review.</h2>
+          <span className="section-tag">Repository</span>
+          <h2>Source, configs, reports, deployment scripts, tests, and selected artifacts are organized for reproduction.</h2>
         </div>
         <a className="button primary" href={REPO_URL} target="_blank" rel="noreferrer">Open GitHub repository</a>
       </section>

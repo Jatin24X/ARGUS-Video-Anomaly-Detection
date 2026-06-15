@@ -1,100 +1,58 @@
-# ARGUS Stream A: Video Anomaly Detection
+# ARGUS Stream A
 
-ARGUS Stream A is a production-style, unsupervised video anomaly detection system. It learns normal temporal behavior from video clips, scores unusual moments with density modeling, and exposes the result through a live Vercel + Modal GPU demo.
+Frame-level video anomaly detection with frozen VideoMAE features, MULDE-style density scoring, Avenue benchmark reporting, and a deployed Vercel + Modal inference stack.
 
 **Live demo:** https://anamolydetect.vercel.app  
-**Backend:** https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run  
+**GPU API:** https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run  
 **Primary benchmark:** Avenue frame-level evaluation
 
-## Why This Project Matters
+## Overview
 
-Most anomaly-detection demos stop at notebooks or offline scores. ARGUS Stream A is built as an end-to-end ML system:
+ARGUS Stream A detects abnormal moments in surveillance-style video by learning the distribution of normal temporal behavior. The system extracts clip embeddings with a frozen VideoMAE-v2 backbone, fits a one-class density scorer, and converts clip-level anomaly evidence into a frame-level timeline with visual evidence frames.
 
-- data preparation and metadata validation
-- VideoMAE feature extraction
-- one-class anomaly scoring with a MULDE-style density model
-- checkpoint selection and frame-level evaluation
-- FastAPI inference service
-- Modal T4 GPU deployment with model preload
-- Vercel frontend with sample gallery, upload flow, timeline visualization, and frame evidence
-
-The project is intentionally honest about benchmark protocol. The MULDE paper's Avenue headline is object-centric; this project reports a full-frame, frame-centric Stream A pipeline and documents that difference clearly.
+The repository contains the complete Stream A workflow: dataset metadata, feature extraction, model selection, evaluation scripts, saved reports, FastAPI inference, Modal GPU deployment, a Next.js frontend, sample videos, and tests.
 
 ## Results
 
 | Dataset | Role | Frame micro AUC | Frame macro AUC | Clip AUC |
 |---|---|---:|---:|---:|
-| Avenue | Primary benchmark | **84.51%** | **85.14%** | **84.00%** |
+| Avenue | Primary frame-level benchmark | **84.51%** | **85.14%** | **84.00%** |
 | UBnormal | Reference profile | **73.94%** | **84.10%** | **73.09%** |
 
-The Avenue frame-centric bring-up baseline was `77.38%` micro AUC. The final benchmark-safe recipe reaches `84.51%`, a `+7.13` point absolute improvement.
-
-Primary report:
+Primary Avenue report:
 
 ```text
 outputs/reports/avenue_stream_a_best_test.json
 ```
 
-## What I Improved
+The Avenue path is reported as a full-frame, frame-centric pipeline. MULDE's Avenue headline result is object-centric, so the two protocols are documented separately instead of being mixed into a single leaderboard.
 
-The main contribution was not just running an existing repo. I built and improved a missing frame-centric Avenue path:
-
-- imported and validated Avenue labels
-- added Avenue feature extraction and metadata support
-- implemented normal-only holdout checkpoint selection
-- moved the scoring surface to `log_density + GMM`
-- tuned temporal smoothing for frame-level AUC
-- fixed numerical and portability issues in GMM sidecar loading
-- packaged the final system as a deployed GPU application
-
-## Architecture
+## System Architecture
 
 ```text
-Video input
+Video
   -> adaptive frame sampling
   -> frozen VideoMAE-v2 clip embeddings
   -> MULDE-style density scoring
   -> temporal smoothing
-  -> anomaly timeline + top-frame evidence
+  -> frame-level anomaly timeline
+  -> top-frame visual evidence
 ```
 
-Training is one-class: only normal videos are used for fitting the scorer. Ground-truth frame labels are used for validation and final benchmarking, not as supervised anomaly classes.
+Training is one-class. Normal videos fit the scorer, while ground-truth frame labels are used for validation, checkpoint selection, and final benchmark reporting.
 
-## Deployed System
+## Key Capabilities
 
-Frontend:
+- Full-frame anomaly scoring for Avenue and UBnormal profiles.
+- Frozen VideoMAE-v2 backbone for reproducible temporal feature extraction.
+- MULDE-style density scoring with log-density and GMM calibration.
+- Normal-only holdout selection for model checkpointing.
+- Frame-level micro/macro AUC reporting and clip-level diagnostics.
+- Modal T4 GPU backend with model/profile preload and bounded uploads.
+- Vercel + Next.js frontend with sample gallery, upload flow, anomaly timeline, and frame evidence.
+- Contract tests for deployment endpoints and runtime behavior.
 
-- Next.js 16
-- Vercel production deployment
-- sample video gallery from `test_videos`
-- upload flow for custom short clips
-- anomaly timeline SVG
-- top-scoring frame evidence
-- profile switcher for Avenue and UBnormal
-
-Backend:
-
-- FastAPI
-- Modal T4 GPU
-- persistent Hugging Face cache
-- model/profile preload
-- bounded upload validation
-- sample-video endpoints
-- thumbnail generation with OpenCV and FFmpeg fallback
-
-Key API endpoints:
-
-```text
-GET  /health
-GET  /profiles
-GET  /samples
-GET  /samples/{sample_id}/thumbnail
-GET  /samples/{sample_id}/video
-POST /samples/{sample_id}/analyze
-POST /analyze
-```
-
-## Repository Structure
+## Repository Layout
 
 ```text
 configs/                 Dataset and training recipes
@@ -102,16 +60,23 @@ data/                    Metadata and compact feature artifacts
 deployment/              FastAPI, Modal, and Vercel/Next.js apps
 docs/                    Architecture, methodology, evaluation, deployment notes
 outputs/                 Frozen checkpoints and benchmark reports
-scripts/                 Training, feature extraction, selection, evaluation CLIs
-src/                     Data, model, evaluation, training, inference modules
+scripts/                 Training, extraction, selection, and evaluation CLIs
+src/                     Data, model, evaluation, training, and inference modules
 test_videos/             Prepared demo clips used by the live gallery
 tests/                   API and deployment contract tests
 ```
 
 ## Quick Start
 
+Install Python dependencies:
+
 ```bash
 pip install -r requirements.txt
+```
+
+Run the local Gradio demo:
+
+```bash
 python demo.py
 ```
 
@@ -129,15 +94,9 @@ npm install
 npm run dev
 ```
 
-Run checks:
+## Evaluation
 
-```bash
-pytest tests -q
-cd deployment/vercel_app
-npm run build
-```
-
-## Reproduce The Main Avenue Evaluation
+Reproduce the main Avenue frame-level report:
 
 ```bash
 python scripts/eval_frame_level.py \
@@ -147,48 +106,63 @@ python scripts/eval_frame_level.py \
   --output-json outputs/reports/avenue_stream_a_reproduced_test.json
 ```
 
+Run the test suite:
+
+```bash
+pytest tests -q
+cd deployment/vercel_app
+npm run build
+```
+
 ## Deployment
 
-Modal:
+Deploy the Modal GPU API:
 
 ```bash
 modal run deployment/modal_app.py --prime-cache
 modal deploy deployment/modal_app.py
 ```
 
-Vercel:
+Deploy the Next.js frontend:
 
 ```bash
 cd deployment/vercel_app
 npx vercel --prod --yes
 ```
 
-Production environment variable:
+Production frontend environment variable:
 
 ```text
 NEXT_PUBLIC_ARGUS_API_URL=https://jatinsheoran2412--argus-stream-a-api-fastapi-app.modal.run
 ```
 
-## Validation
+Modal runs with `min_containers=0` to keep idle cost low. The first request after an idle period can take longer while the container starts and loads the model.
 
-Current verified checks:
+## API Surface
 
-- `pytest tests -q` passes
-- `npm run build` passes on Next.js 16
-- Modal `/health` reports CUDA-ready service with cached Avenue and UBnormal profiles
-- `/samples` returns seven prepared demo clips
-- real deployed sample analysis completes successfully on `avenue-1`
+```text
+GET  /health
+GET  /profiles
+GET  /samples
+GET  /samples/{sample_id}/thumbnail
+GET  /samples/{sample_id}/video
+POST /samples/{sample_id}/analyze
+POST /analyze
+```
+
+## Current Validation
+
+- Python deployment contract tests pass.
+- Next.js production build passes.
+- Modal health endpoint reports a CUDA-ready service with Avenue and UBnormal profiles cached.
+- The live frontend can load prepared samples and send analysis requests to the GPU API.
 
 ## Limitations
 
-- Full-frame features are less localized than object-centric pipelines.
-- Avenue and UBnormal are different datasets and should not be merged into one leaderboard.
-- AUC measures ranking quality; a production alerting system would still need threshold calibration.
-- Modal `min_containers=0` reduces cost but introduces cold-start latency after idle periods.
-
-## Interview Summary
-
-> I built a full-stack unsupervised video anomaly detection system. The core ML pipeline uses frozen VideoMAE features and MULDE-style density scoring. My main contribution was bringing up and improving the missing frame-centric Avenue path, moving micro AUC from 77.38% to 84.51%, then deploying the model as a real GPU-backed web application with sample-video analysis, upload validation, timelines, and visual evidence.
+- Full-frame features are less spatially localized than object-centric pipelines.
+- Avenue and UBnormal are different datasets and should be evaluated separately.
+- AUC measures ranking quality; deployment thresholds still need calibration for a target operating environment.
+- Cold starts are expected when Modal scales to zero after idle time.
 
 ## Tech Stack
 

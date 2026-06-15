@@ -6,7 +6,7 @@
 - Modal hosts the FastAPI inference service on an NVIDIA T4.
 - A Modal volume persists downloaded VideoMAE artifacts.
 - `min_containers=0` removes idle GPU cost.
-- `max_containers=1` bounds spending for the portfolio deployment.
+- `max_containers=1` bounds GPU concurrency and keeps runtime cost predictable.
 
 ## API
 

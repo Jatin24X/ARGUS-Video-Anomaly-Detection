@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ARGUS Stream A | Video Anomaly Detection",
   description:
-    "Portfolio-grade unsupervised video anomaly detection with Avenue benchmarks, Modal GPU inference, and a Vercel frontend.",
+    "Unsupervised frame-level video anomaly detection with Avenue benchmarks, Modal GPU inference, and a Vercel frontend.",
   openGraph: {
     title: "ARGUS Stream A | Video Anomaly Detection",
     description:

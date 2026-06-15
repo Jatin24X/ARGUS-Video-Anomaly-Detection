@@ -1,43 +1,33 @@
-# Presentation Script
+# Demo Walkthrough
 
 ## 30-Second Version
 
-We built a standalone ARGUS Stream A anomaly detection pipeline using VideoMAE and MULDE.  
-The main research gap we solved is that the famous MULDE Avenue number is object-centric, while our system is frame-centric.  
-So we implemented and improved a frame-centric Avenue path end-to-end.  
-Our Avenue bring-up baseline was `0.7738` micro AUC, and after targeted fixes we reached `0.8451` micro AUC with `0.8514` macro AUC.
+ARGUS Stream A is a standalone frame-level video anomaly detection system. It extracts frozen VideoMAE-v2 clip embeddings, scores low-likelihood temporal behavior with a MULDE-style density model, and displays the result as an anomaly timeline with top-frame evidence.
+
+The main Avenue result is `0.8451` frame micro AUC and `0.8514` frame macro AUC. The Avenue path is reported as a full-frame, frame-centric setup, while object-centric Avenue numbers are treated as a separate protocol.
 
 ## 1-Minute Version
 
-This standalone package isolates Stream A from ARGUS as an end-to-end video anomaly detection system.  
-It uses VideoMAE-v2 Base to extract clip embeddings and MULDE to score how abnormal those embeddings are relative to normal training data.
+This system takes a video, samples frames, extracts temporal clip embeddings with VideoMAE-v2, and fits a normal-only density scorer. During inference, clips that are unlikely under the normal-video distribution receive higher anomaly scores. Those scores are smoothed and projected back to a frame-level timeline.
 
-The important point is that the MULDE paper's well-known Avenue score, `94.3`, is from an object-centric setup. Our Stream A package is frame-centric, so that number is not the right direct comparison.
-
-Our contribution was to bring up the missing frame-centric Avenue path, make it benchmarkable with real labels, fix the validation and scoring pipeline, and improve the result from `0.7738` micro AUC to `0.8451` micro AUC. We also reached `0.8514` macro AUC.
+The deployed app supports two saved profiles: Avenue as the primary frame-level benchmark profile and UBnormal as a reference profile. The interface can run prepared sample videos or user uploads, then returns the anomaly curve, peak timestamp, runtime metadata, and highest-scoring frames.
 
 ## 2-Minute Version
 
-We approached the project in two layers.
+The Stream A package is organized as a complete ML system: data metadata, feature extraction, scorer training, checkpoint selection, frame-level evaluation, API deployment, and frontend visualization.
 
-First, we built a clean standalone Stream A system so it can be trained, evaluated, and demonstrated independently from the rest of ARGUS. The pipeline is: raw video to VideoMAE embeddings, then MULDE anomaly scoring, then frame-level anomaly timelines and benchmark metrics.
+The Avenue path includes real frame-label metadata, normal-only holdout selection, log-density plus GMM scoring, temporal smoothing, and saved benchmark reports. The primary Avenue test report is:
 
-Second, we focused on the Avenue dataset. The key subtlety is that the MULDE paper's headline Avenue score is object-centric, meaning it uses a different feature pipeline than ours. Since our standalone Stream A is frame-centric, the correct research question became: can we make a frame-centric Avenue version work well?
+```text
+outputs/reports/avenue_stream_a_best_test.json
+```
 
-We implemented that missing Avenue path end-to-end. That included importing and validating real Avenue frame labels, building a proper normal-only holdout selection path, stabilizing GMM-based scoring, and tuning the Avenue-specific MULDE evaluation surface.
+The live deployment uses Vercel for the frontend and Modal for the FastAPI GPU backend. Modal runs on a T4 with cached model artifacts and `min_containers=0`, which keeps idle cost low while allowing the first request after idle to take longer.
 
-Our initial Avenue bring-up baseline was `0.7738` micro AUC. After these targeted fixes, the main reported result became `0.8451` micro AUC, `0.8514` macro AUC, and `0.8400` clip AUC.
+## Protocol Note
 
-So the contribution is not that we matched the object-centric paper number. The contribution is that we implemented and improved a clean frame-centric Avenue version of the method and made it competitive.
+MULDE's Avenue headline is object-centric. ARGUS Stream A reports a full-frame, frame-centric path. Those protocols use different input representations and should not be collapsed into one leaderboard number.
 
-## Exact Gap Statement
+## If Asked About The Strongest Engineering Choice
 
-> The paper highlights Avenue in an object-centric setup. We solved the missing practical gap of implementing and improving a frame-centric Avenue MULDE pipeline in a clean standalone system.
-
-## If Asked Why Not Compare Directly To 94.3
-
-> Because `94.3` is object-centric and ours is frame-centric. The detector inputs, feature types, and scoring granularity are different, so that is not an apples-to-apples comparison.
-
-## If Asked What The Main Improvement Was
-
-> The highest-impact change was moving Avenue to the correct MULDE scoring surface, specifically log-density scoring with GMM aggregation, then fixing checkpoint selection and numerical stability for that setup.
+The strongest engineering choice is the strict evaluation contract: normal-only fitting, fixed feature backbone, saved reports, clear full-frame protocol, and separate handling of object-centric numbers.

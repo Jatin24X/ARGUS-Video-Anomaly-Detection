@@ -1,6 +1,6 @@
 # Stream A Standalone Context
 
-This folder is a self-contained extraction of **ARGUS Stream A only** for lab-project evaluation.
+This folder is a self-contained **ARGUS Stream A** package focused on frame-level video anomaly detection, benchmark evaluation, and deployment.
 
 ## Scope
 
@@ -55,5 +55,5 @@ This standalone folder now supports Avenue end to end:
 
 ## Notes
 
-- Treat this folder as a presentation-friendly Stream A package.
+- Treat this folder as the standalone Stream A package.
 - The parent ARGUS repo remains the full research workspace.
