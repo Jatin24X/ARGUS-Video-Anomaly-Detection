@@ -726,7 +726,12 @@ export default function Page() {
           {cacheStatus === "cached" ? (
             <div className="status-indicator indicator-cached">
               <span className="dot-pulse" />
-              <span>⚡ Fast-Cached (0ms CPU Mode)</span>
+              <span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "12px", height: "12px", display: "inline-block", marginRight: "6px", verticalAlign: "-2px" }}>
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                Fast-Cached (0ms CPU Mode)
+              </span>
             </div>
           ) : (
             <div className={`status-indicator ${health?.status === "ready" ? "indicator-ready" : "indicator-warming"}`}>
@@ -905,7 +910,13 @@ export default function Page() {
                 <div className="uploader-layout">
                   <label className="uploader-dropzone" htmlFor="console-video-upload">
                     <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
-                    <span className="upload-arrow">⇪</span>
+                    <span className="upload-arrow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </span>
                     <strong>Ingest local video container</strong>
                     <small>MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
                   </label>
@@ -1034,7 +1045,13 @@ export default function Page() {
             {/* Active Alarm Warning HUD */}
             <div className={`alarm-alert-banner ${isCurrentlyAnomalous ? "alarm-triggered" : ""}`}>
               <div className="alarm-indicator">
-                <span className="alarm-icon">🚨</span>
+                <span className="alarm-icon" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "16px", height: "16px", display: "inline-block", marginRight: "8px", verticalAlign: "-3px" }}>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                </span>
                 <span className="alarm-text">
                   {isCurrentlyAnomalous
                     ? `SURVEILLANCE EXCEPTION IN PROGRESS | TIME: ${currentTime.toFixed(2)}s`
