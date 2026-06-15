@@ -1,4 +1,4 @@
-# ARGUS Stream A
+# ARGUS 
 
 Frame-level video anomaly detection with frozen VideoMAE features, MULDE-style density scoring, Avenue benchmark reporting, and a deployed Vercel + Modal inference stack.
 
