@@ -1479,22 +1479,26 @@ p {
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 20px;
+  gap: 32px;
   width: 100%;
 }
 
 .bento-card {
   display: flex;
-  background: rgba(13, 18, 23, 0.45);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background: rgba(10, 15, 24, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 -4px 12px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.37);
+  transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
+  --mouse-x: 0px;
+  --mouse-y: 0px;
 }
 
 .bento-card::before {
@@ -1506,12 +1510,32 @@ p {
   height: 1px;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), transparent);
   pointer-events: none;
+  z-index: 2;
+}
+
+.bento-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    300px circle at var(--mouse-x) var(--mouse-y),
+    rgba(41, 211, 255, 0.06),
+    transparent 80%
+  );
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .bento-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(41, 211, 255, 0.25);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(41, 211, 255, 0.05);
+  transform: translateY(-3px);
+  border-color: rgba(41, 211, 255, 0.3);
+  box-shadow: inset 0 -4px 12px rgba(0,0,0,0.3), 0 16px 48px rgba(0, 0, 0, 0.5), 0 0 24px rgba(41, 211, 255, 0.08);
+}
+
+.bento-card:hover::after {
+  opacity: 1;
 }
 
 .col-span-4 {
@@ -1715,4 +1739,141 @@ p {
   .alert-evidence-split {
     grid-template-columns: 1fr;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Floating Ambient Background Blobs
+   ────────────────────────────────────────────────────────────────────── */
+.bg-blur-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(140px);
+  z-index: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  opacity: 0.15;
+  transition: opacity 1s ease;
+}
+
+.blob-a {
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, rgba(41, 211, 255, 0.45) 0%, transparent 80%);
+  top: -100px;
+  left: -100px;
+  animation: float-blob-a 25s infinite alternate ease-in-out;
+}
+
+.blob-b {
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, rgba(101, 240, 182, 0.35) 0%, transparent 80%);
+  top: 20%;
+  right: -200px;
+  animation: float-blob-b 30s infinite alternate ease-in-out;
+}
+
+.blob-c {
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, rgba(255, 178, 95, 0.25) 0%, transparent 80%);
+  bottom: -150px;
+  left: 30%;
+  animation: float-blob-c 22s infinite alternate ease-in-out;
+}
+
+@keyframes float-blob-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate3d(80px, 60px, 0) scale(1.15) rotate(120deg); }
+  66% { transform: translate3d(-40px, 120px, 0) scale(0.9) rotate(240deg); }
+}
+
+@keyframes float-blob-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.1) rotate(0deg); }
+  50% { transform: translate3d(-120px, 100px, 0) scale(0.85) rotate(-180deg); }
+}
+
+@keyframes float-blob-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95) rotate(0deg); }
+  40% { transform: translate3d(80px, -90px, 0) scale(1.1) rotate(150deg); }
+  80% { transform: translate3d(-60px, 50px, 0) scale(1.0) rotate(300deg); }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Scroll-Driven Reveal & Transitions
+   ────────────────────────────────────────────────────────────────────── */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(35px);
+  transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   SVG Flowing Line Connection Particles
+   ────────────────────────────────────────────────────────────────────── */
+@keyframes flow-line {
+  to { stroke-dashoffset: -32; }
+}
+
+.flowing-line {
+  stroke-dasharray: 6, 6;
+  animation: flow-line 1.2s linear infinite;
+  stroke: rgba(41, 211, 255, 0.4);
+}
+
+.flowing-line.active-flow {
+  stroke: var(--cyan);
+  stroke-width: 2.5;
+  animation: flow-line 0.8s linear infinite;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Live Log Stream Panel
+   ────────────────────────────────────────────────────────────────────── */
+.live-stream-logs {
+  background: #090d14;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: #c9d1d9;
+  height: 120px;
+  overflow-y: auto;
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
+  margin-top: 12px;
+}
+
+.live-stream-logs div {
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+
+.live-stream-logs .log-timestamp {
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+.live-stream-logs .log-info {
+  color: var(--cyan);
+}
+
+.live-stream-logs .log-warning {
+  color: var(--orange);
+}
+
+.live-stream-logs .log-danger {
+  color: var(--red);
+  font-weight: 700;
 }

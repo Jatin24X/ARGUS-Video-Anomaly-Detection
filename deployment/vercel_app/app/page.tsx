@@ -477,6 +477,77 @@ export default function Page() {
   const [currentTime, setCurrentTime] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
 
+  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [logs, setLogs] = useState<string[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto scroll live logs terminal to bottom
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs]);
+
+  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    e.currentTarget.style.setProperty("--mouse-x", `${x}px`);
+    e.currentTarget.style.setProperty("--mouse-y", `${y}px`);
+  };
+
+  // Scroll reveal IntersectionObserver setup
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const targets = document.querySelectorAll(".scroll-reveal");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id || "";
+            if (id) {
+              setVisibleSections((prev) => ({ ...prev, [id]: true }));
+            }
+          }
+        });
+      },
+      { threshold: 0.05 }
+    );
+    targets.forEach((t) => observer.observe(t));
+    return () => observer.disconnect();
+  }, []);
+
+  // Simulated live log generator stream during live analysis runs
+  useEffect(() => {
+    if (!loading) {
+      setLogs([]);
+      return;
+    }
+    const logsList = [
+      "Establishing connection to GPU scale group...",
+      "Modal container activated (NVIDIA T4 request).",
+      "Model weights retrieved from persistent volume.",
+      "Frozen backbone layers initialized: VideoMAE-v2 (ViT-Base).",
+      "BGR frame arrays parsed through FFmpeg decoder.",
+      `Coordinates set to: Spatial ROI sector [${roiSector.toUpperCase()}].`,
+      "Downsampling frame sequence to analysis uniform 12.0 FPS.",
+      "Computing spatio-temporal ViT feature embeddings...",
+      "Running multi-scale density score estimation...",
+      "Calibrating outlier signals via 1-component GMM scaling...",
+      "Applying 1D temporal Gaussian filter smoothing...",
+      "Inference loop completed successfully. Broadcasting timeline scores."
+    ];
+    setLogs([logsList[0]]);
+    let idx = 1;
+    const interval = setInterval(() => {
+      if (idx < logsList.length) {
+        setLogs((prev) => [...prev, logsList[idx]]);
+        idx++;
+      }
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [loading, roiSector]);
+
   // Load initial parameters and auto-select first video
   useEffect(() => {
     if (!API_BASE) {
@@ -772,6 +843,11 @@ export default function Page() {
 
   return (
     <main className="console-shell">
+      {/* 3 Floating Background Blobs */}
+      <div className="bg-blur-blob blob-a" />
+      <div className="bg-blur-blob blob-b" />
+      <div className="bg-blur-blob blob-c" />
+
       {/* 1. Header Topbar */}
       <header className="console-topbar">
         <a className="console-brand" href="#top">
@@ -808,7 +884,7 @@ export default function Page() {
       </header>
 
       {/* Hero Header introducing Project Complexity */}
-      <section id="top" className="console-hero">
+      <section id="top" className={`console-hero scroll-reveal ${visibleSections['top'] ? 'visible' : ''}`}>
         <div className="hero-left">
           <div className="hero-eyebrow">one-class density estimation</div>
           <h1>Industrial-grade Frame Anomaly Analysis.</h1>
@@ -862,7 +938,7 @@ export default function Page() {
       </section>
 
       {/* 2. Interactive Pipeline Visualizer */}
-      <section id="pipeline-section" className="console-panel-section">
+      <section id="pipeline-section" className={`console-panel-section scroll-reveal ${visibleSections['pipeline-section'] ? 'visible' : ''}`}>
         <div className="section-title">
           <span>PIPELINE ENGINE</span>
           <h2>Spatio-Temporal Inference Architecture</h2>
@@ -883,7 +959,21 @@ export default function Page() {
               </button>
               {index < pipelineNodes.length - 1 && (
                 <div className="graph-connector">
-                  <svg viewBox="0 0 24 24" className="arrow-svg"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <svg viewBox="0 0 32 12" className="connector-svg" style={{ width: "32px", height: "12px", overflow: "visible" }}>
+                    <path
+                      d="M0 6h26"
+                      fill="none"
+                      className={`flowing-line ${loading || activeNode === node.id || activeNode === pipelineNodes[index + 1]?.id ? "active-flow" : ""}`}
+                    />
+                    <path
+                      d="M22 2l4 4-4 4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </div>
               )}
             </div>
@@ -945,11 +1035,11 @@ export default function Page() {
       </section>
 
       {/* 3. Live Dashboard Workspace (The Bento Grid) */}
-      <section id="dashboard-section" className="console-dashboard-workspace">
+      <section id="dashboard-section" className={`console-dashboard-workspace scroll-reveal ${visibleSections['dashboard-section'] ? 'visible' : ''}`}>
         <div className="bento-grid">
           
           {/* Card 1: Video Player & Bounding Overlays (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col player-bento-card">
+          <div className="bento-card col-span-8 flex-col player-bento-card" onMouseMove={handleCardMouseMove}>
             <div className="bento-card-header">
               <h3>Surveillance Feed Monitor</h3>
               <span className="panel-badge-status">
@@ -997,7 +1087,7 @@ export default function Page() {
           </div>
 
           {/* Card 2: Configuration & Parameters (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col">
+          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove}>
             <div className="bento-card-header">
               <h3>Pipeline Parameters</h3>
             </div>
@@ -1106,7 +1196,7 @@ export default function Page() {
           </div>
 
           {/* Card 4: Video Intake & Sample Gallery (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col gallery-bento-card">
+          <div className="bento-card col-span-4 flex-col gallery-bento-card" onMouseMove={handleCardMouseMove}>
             <div className="bento-card-header">
               <h3>Video Intake Source</h3>
               <div className="tab-buttons">
@@ -1162,7 +1252,7 @@ export default function Page() {
           </div>
 
           {/* Card 5: Pipeline Execution Profiler & Telemetry (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col profiler-bento-card">
+          <div className="bento-card col-span-8 flex-col profiler-bento-card" onMouseMove={handleCardMouseMove}>
             <div className="bento-card-header">
               <h3>Pipeline Telemetry Profiler</h3>
               {analysis && (
@@ -1172,7 +1262,25 @@ export default function Page() {
               )}
             </div>
             
-            {analysis ? (
+            {loading ? (
+              <div className="live-stream-logs flex-1">
+                {logs.map((log, index) => {
+                  let logClass = "log-info";
+                  if (log.toLowerCase().includes("failed") || log.toLowerCase().includes("error")) {
+                    logClass = "log-danger";
+                  } else if (log.toLowerCase().includes("warning") || log.toLowerCase().includes("idle")) {
+                    logClass = "log-warning";
+                  }
+                  return (
+                    <div key={index}>
+                      <span className="log-timestamp">[{new Date().toLocaleTimeString()}]</span>
+                      <span className={logClass}>{log}</span>
+                    </div>
+                  );
+                })}
+                <div ref={logsEndRef} />
+              </div>
+            ) : analysis ? (
               <div className="hud-stats-row flex-1">
                 <div className="hud-stat-box">
                   <span>HARDWARE DEVICE</span>
@@ -1203,7 +1311,7 @@ export default function Page() {
           </div>
 
           {/* Card 6: Anomaly Timeline SVG Chart (col-span-12) */}
-          <div className="bento-card col-span-12 flex-col graph-bento-card">
+          <div className="bento-card col-span-12 flex-col graph-bento-card" onMouseMove={handleCardMouseMove}>
             <div className="bento-card-header">
               <h3>Temporal Anomaly Score Sequence</h3>
               {analysis && (
@@ -1251,7 +1359,7 @@ export default function Page() {
 
           {/* Card 8: Surveillance Alarm Log (col-span-6) */}
           {analysis && (
-            <div className="bento-card col-span-6 flex-col">
+            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove}>
               <div className="bento-card-header">
                 <h3>Surveillance Alarm Log</h3>
                 <small>{activeAnomalyRegions.length} events</small>
@@ -1305,7 +1413,7 @@ export default function Page() {
 
           {/* Card 9: High-Scoring Frame Evidence (col-span-6) */}
           {analysis && (
-            <div className="bento-card col-span-6 flex-col">
+            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove}>
               <div className="bento-card-header">
                 <h3>High-Scoring Frame Evidence</h3>
               </div>
@@ -1341,7 +1449,7 @@ export default function Page() {
       </section>
 
       {/* 4. Recruiter Q&A Accordion */}
-      <section id="faq-section" className="console-panel-section faq-section-panel">
+      <section id="faq-section" className={`console-panel-section faq-section-panel scroll-reveal ${visibleSections['faq-section'] ? 'visible' : ''}`}>
         <div className="section-title">
           <span>DEVELOPER INTERVIEW QA</span>
           <h2>Systems & Machine Learning Engineering Discussion</h2>
