@@ -50,7 +50,7 @@ ARGUS is a frame-level video anomaly detection platform designed for automated e
 ## 🔬 Core Machine Learning Design
 
 ### 1. Unsupervised One-Class Density Estimation
-surveillance anomalies are structurally diverse and impossible to fully catalog during training. ARGUS treats anomaly detection as an **unsupervised one-class density estimation** problem:
+Surveillance anomalies are structurally diverse and impossible to fully catalog during training. ARGUS treats anomaly detection as an **unsupervised one-class density estimation** problem:
 * **Training Protocol**: The model is trained strictly on normal, non-anomalous sequences to map expected human and environmental behaviors.
 * **Inference Mechanism**: Clips with low-likelihood density under the normal distribution are flagged as anomalies. Frame-level annotations are reserved exclusively for validation splits and final metrics reporting.
 
