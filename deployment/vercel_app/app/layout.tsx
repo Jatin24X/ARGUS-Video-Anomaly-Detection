@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ARGUS | Zero-Shot Video Anomaly Detection",
+  title: "ARGUS | Unsupervised Video Anomaly Detection",
   description:
-    "Autonomous surveillance exception detection utilizing spatio-temporal Vision Transformers (VideoMAE-v2), multiscale density estimators, and scale-to-zero serverless GPU pipelines.",
+    "Unsupervised video anomaly detection dashboard utilizing spatio-temporal Vision Transformers (VideoMAE-v2), multiscale density estimators, and scale-to-zero serverless GPU pipelines.",
   openGraph: {
-    title: "ARGUS | Zero-Shot Video Anomaly Detection",
+    title: "ARGUS | Unsupervised Video Anomaly Detection",
     description:
-      "Autonomous surveillance exception detection utilizing VideoMAE-v2 features, MULDE density scoring, and scale-to-zero serverless GPU inference.",
+      "Unsupervised video anomaly detection dashboard utilizing VideoMAE-v2 features, MULDE density scoring, and scale-to-zero serverless GPU inference.",
     url: "https://anamolydetect.vercel.app",
     siteName: "ARGUS",
     type: "website",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "ARGUS Console Dashboard Preview",
+        alt: "ARGUS Dashboard Preview",
       },
     ],
   },
