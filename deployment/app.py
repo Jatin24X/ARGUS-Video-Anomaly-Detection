@@ -11,7 +11,8 @@ from typing import Final
 
 import cv2
 import uvicorn
-from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
+import uuid
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -34,6 +35,50 @@ ALLOWED_VIDEO_SUFFIXES: Final = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 MAX_UPLOAD_BYTES: Final = int(
     float(os.environ.get("ARGUS_STREAM_A_MAX_UPLOAD_MB", "50")) * 1024 * 1024
 )
+
+JOBS: dict[str, dict[str, object]] = {}
+
+
+def run_async_analysis(
+    job_id: str,
+    video_path: Path,
+    profile_label: str,
+    roi_sector: str,
+    delete_source: bool = False,
+) -> None:
+    JOBS[job_id] = {
+        "status": "processing",
+        "progress_pct": 5,
+        "step": "Opening video",
+        "result": None,
+        "error": None,
+    }
+
+    def progress_cb(fraction: float, desc: str) -> None:
+        JOBS[job_id]["progress_pct"] = int(fraction * 100)
+        JOBS[job_id]["step"] = desc
+
+    try:
+        payload = ENGINE.analyze_payload(
+            video_path,
+            profile_label,
+            roi_sector=roi_sector,
+            progress_callback=progress_cb,
+        )
+        JOBS[job_id]["status"] = "completed"
+        JOBS[job_id]["progress_pct"] = 100
+        JOBS[job_id]["step"] = "Analysis finished"
+        JOBS[job_id]["result"] = payload
+    except Exception as exc:
+        LOGGER.exception("Error during async analysis job %s", job_id)
+        JOBS[job_id]["status"] = "failed"
+        JOBS[job_id]["error"] = str(exc)
+    finally:
+        if delete_source and video_path.exists():
+            try:
+                video_path.unlink(missing_ok=True)
+            except Exception as e:
+                LOGGER.warning("Could not delete temp file %s: %s", video_path, e)
 
 
 def _sample_catalog() -> list[dict[str, object]]:
@@ -219,9 +264,10 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
             headers={"Cache-Control": "public, max-age=86400"},
         )
 
-    @app.post("/samples/{sample_id}/analyze")
+    @app.post("/samples/{sample_id}/analyze", status_code=202)
     def analyze_sample(
         sample_id: str,
+        background_tasks: BackgroundTasks,
         profile: str | None = None,
         roi_sector: str = "full",
     ) -> dict[str, object]:
@@ -230,30 +276,21 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
             sample for sample in _sample_catalog() if sample["id"] == sample_id
         )
         profile_label = _resolve_profile_label(profile or str(catalog_entry["profile"]))
-        started = time.perf_counter()
-        try:
-            payload = ENGINE.analyze_payload(path, profile_label, roi_sector=roi_sector)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-        payload["request"] = {
-            "profile": profile_label,
-            "filename": path.name,
-            "sample_id": sample_id,
-            "roi_sector": roi_sector,
-        }
-        LOGGER.info(
-            "sample_analysis sample=%s profile=%s elapsed=%.2fs",
-            sample_id,
+        
+        job_id = f"job-{uuid.uuid4()}"
+        background_tasks.add_task(
+            run_async_analysis,
+            job_id,
+            path,
             profile_label,
-            time.perf_counter() - started,
+            roi_sector,
+            delete_source=False,
         )
-        return payload
+        return {"job_id": job_id, "status": "queued"}
 
-    @app.post("/analyze")
+    @app.post("/analyze", status_code=202)
     async def analyze(
+        background_tasks: BackgroundTasks,
         profile: str = Form(...),
         roi_sector: str = Form("full"),
         video: UploadFile = File(...),
@@ -274,8 +311,6 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
 
         temp_path: Path | None = None
         uploaded_bytes = 0
-        started = time.perf_counter()
-
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
                 temp_path = Path(temp_file.name)
@@ -293,29 +328,30 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
                             ),
                         )
                     temp_file.write(chunk)
-
-            payload = ENGINE.analyze_payload(temp_path, profile_label, roi_sector=roi_sector)
-            payload["request"] = {
-                "profile": profile_label,
-                "filename": filename,
-                "roi_sector": roi_sector,
-            }
-            LOGGER.info(
-                "upload_analysis filename=%s profile=%s bytes=%d elapsed=%.2fs",
-                filename,
-                profile_label,
-                uploaded_bytes,
-                time.perf_counter() - started,
-            )
-            return payload
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-        finally:
-            await video.close()
+        except Exception as exc:
             if temp_path is not None and temp_path.exists():
                 temp_path.unlink(missing_ok=True)
+            raise exc
+        finally:
+            await video.close()
+
+        job_id = f"job-{uuid.uuid4()}"
+        background_tasks.add_task(
+            run_async_analysis,
+            job_id,
+            temp_path,
+            profile_label,
+            roi_sector,
+            delete_source=True,
+        )
+        return {"job_id": job_id, "status": "queued"}
+
+    @app.get("/jobs/{job_id}")
+    def get_job_status(job_id: str) -> dict[str, object]:
+        job = JOBS.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found.")
+        return job
 
     return app
 

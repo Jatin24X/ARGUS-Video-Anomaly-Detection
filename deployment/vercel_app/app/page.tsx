@@ -613,6 +613,8 @@ export default function Page() {
   const [error, setError] = useState("");
 
   const [thresholdPercentile, setThresholdPercentile] = useState<number>(85);
+  const [thresholdMode, setThresholdMode] = useState<"percentile" | "probability">("percentile");
+  const [probabilityCutoff, setProbabilityCutoff] = useState<number>(0.70);
   const [roiSector, setRoiSector] = useState<string>("full");
   const [cacheStatus, setCacheStatus] = useState<"cached" | "live" | "loading" | "fallback">("loading");
   const [activeNode, setActiveNode] = useState<string | null>(null);
@@ -681,11 +683,7 @@ export default function Page() {
       `[INFRA] Spatial ROI Masking: Supported (Sector [${roiSector.toUpperCase()}] crop)`,
       "[INFRA] Serverless Scale-Down Window: 15s (Scale-To-Zero Optimization)",
       "[INFRA] Active Heartbeat Warmup: Enabled (Tab-visibility tracking)",
-      "[INFRA] Status: Worker node ready on NVIDIA T4 (CUDA 12.2)",
-      "[MODEL] Executing feature projection on temporal latency slice...",
-      "[MODEL] Calculating density log-likelihood scores...",
-      "[MODEL] Standardizing anomaly probabilities P(anomaly|x) in [0, 1]...",
-      "[INFRA] Broadcasting completed exception telemetry timeline."
+      "[INFRA] Status: Worker node ready on NVIDIA T4 (CUDA 12.2)"
     ];
     setLogs([logsList[0]]);
     let idx = 1;
@@ -694,7 +692,7 @@ export default function Page() {
         setLogs((prev) => [...prev, logsList[idx]]);
         idx++;
       }
-    }, 900);
+    }, 400);
     return () => clearInterval(interval);
   }, [loading, roiSector]);
 
@@ -768,8 +766,11 @@ export default function Page() {
     [profiles, selectedKey]
   );
 
-  // Dynamic Client-Side Threshold calculation based on Percentile
+  // Dynamic Client-Side Threshold calculation based on Mode (Percentile or Calibrated Probability)
   const activeThreshold = useMemo(() => {
+    if (thresholdMode === "probability") {
+      return probabilityCutoff;
+    }
     if (!analysis) return 0.5;
     const scores = analysis.analysis.timeline.scores;
     if (!scores.length) return 0.5;
@@ -777,7 +778,7 @@ export default function Page() {
     const sorted = [...scores].sort((a, b) => a - b);
     const index = Math.floor((thresholdPercentile / 100) * (sorted.length - 1));
     return sorted[index];
-  }, [analysis, thresholdPercentile]);
+  }, [analysis, thresholdPercentile, thresholdMode, probabilityCutoff]);
 
   // Dynamic Client-Side Anomaly Regions based on activeThreshold
   const activeAnomalyRegions = useMemo(() => {
@@ -947,16 +948,63 @@ export default function Page() {
         response = await fetch(`${API_BASE}/analyze`, { method: "POST", body });
       }
 
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail || `Server reported error: ${response.status}`);
+      const initData = await response.json();
+      if (!response.ok) throw new Error(initData.detail || `Server reported error: ${response.status}`);
 
-      setAnalysis(payload as AnalysisResponse);
-      setCacheStatus("live");
-
-      // Auto-seek the video to the peak anomaly moment
-      if (payload.analysis?.summary?.peak_time_sec !== undefined && videoRef.current) {
-        videoRef.current.currentTime = payload.analysis.summary.peak_time_sec;
+      const jobId = initData.job_id;
+      if (!jobId) {
+        // Fallback: if backend returned a finished analysis directly for some reason
+        setAnalysis(initData as AnalysisResponse);
+        setCacheStatus("live");
+        if (initData.analysis?.summary?.peak_time_sec !== undefined && videoRef.current) {
+          videoRef.current.currentTime = initData.analysis.summary.peak_time_sec;
+        }
+        setLoading(false);
+        return;
       }
+
+      // Start polling
+      await new Promise<void>((resolve, reject) => {
+        const intervalId = window.setInterval(async () => {
+          try {
+            const jobRes = await fetch(`${API_BASE}/jobs/${jobId}`);
+            if (!jobRes.ok) {
+              const errorData = await jobRes.json();
+              throw new Error(errorData.detail || "Failed to fetch job status.");
+            }
+            const jobData = await jobRes.json();
+            
+            // Push progress log message to frontend log console
+            if (jobData.step) {
+              const progressMsg = `[MODEL] ${jobData.step} (${jobData.progress_pct}% complete)...`;
+              setLogs((prev) => {
+                // Prevent duplicate consecutive logs of the same step/pct
+                if (prev.length > 0 && prev[prev.length - 1].includes(jobData.step) && prev[prev.length - 1].includes(`${jobData.progress_pct}%`)) {
+                  return prev;
+                }
+                return [...prev, progressMsg];
+              });
+            }
+
+            if (jobData.status === "completed") {
+              window.clearInterval(intervalId);
+              const payload = jobData.result as AnalysisResponse;
+              setAnalysis(payload);
+              setCacheStatus("live");
+              if (payload.analysis?.summary?.peak_time_sec !== undefined && videoRef.current) {
+                videoRef.current.currentTime = payload.analysis.summary.peak_time_sec;
+              }
+              resolve();
+            } else if (jobData.status === "failed") {
+              window.clearInterval(intervalId);
+              reject(new Error(jobData.error || "Async background job failed."));
+            }
+          } catch (err) {
+            window.clearInterval(intervalId);
+            reject(err);
+          }
+        }, 500); // Poll every 500ms
+      });
     } catch (cause) {
       if (selectedSample) {
         console.warn("Live GPU analysis failed, attempting cached fallback backup...", cause);
@@ -1573,24 +1621,64 @@ export default function Page() {
               </div>
 
               <div className="config-item">
-                <div className="slider-header">
-                  <label>Anomaly Sensitivity Cutoff</label>
-                  <span className="slider-value">{thresholdPercentile}th percentile</span>
+                <label>Threshold Model Mode</label>
+                <div className="profile-buttons-group" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+                  <button
+                    className={thresholdMode === "percentile" ? "profile-active-btn" : ""}
+                    onClick={() => setThresholdMode("percentile")}
+                  >
+                    Dynamic Percentile
+                  </button>
+                  <button
+                    className={thresholdMode === "probability" ? "profile-active-btn" : ""}
+                    onClick={() => setThresholdMode("probability")}
+                  >
+                    Calibrated Probability
+                  </button>
                 </div>
-                <input
-                  type="range"
-                  id="sensitivity-threshold-slider"
-                  min="50"
-                  max="99"
-                  value={thresholdPercentile}
-                  onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
-                  className="console-range-slider"
-                  style={{ "--slider-percent": `${(thresholdPercentile - 50) / 49 * 100}%` } as React.CSSProperties}
-                />
-                <small className="slider-hint">
-                  Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
-                </small>
               </div>
+
+              {thresholdMode === "percentile" ? (
+                <div className="config-item animate-fade-in">
+                  <div className="slider-header">
+                    <label>Anomaly Sensitivity Cutoff</label>
+                    <span className="slider-value">{thresholdPercentile}th percentile</span>
+                  </div>
+                  <input
+                    type="range"
+                    id="sensitivity-threshold-slider"
+                    min="50"
+                    max="99"
+                    value={thresholdPercentile}
+                    onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
+                    className="console-range-slider"
+                    style={{ "--slider-percent": `${(thresholdPercentile - 50) / 49 * 100}%` } as React.CSSProperties}
+                  />
+                  <small className="slider-hint">
+                    Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
+                  </small>
+                </div>
+              ) : (
+                <div className="config-item animate-fade-in">
+                  <div className="slider-header">
+                    <label>Calibrated Anomaly Cutoff</label>
+                    <span className="slider-value">P(anomaly) &ge; {probabilityCutoff.toFixed(2)}</span>
+                  </div>
+                  <input
+                    type="range"
+                    id="probability-threshold-slider"
+                    min="10"
+                    max="95"
+                    value={Math.round(probabilityCutoff * 100)}
+                    onChange={(e) => setProbabilityCutoff(parseInt(e.target.value) / 100)}
+                    className="console-range-slider"
+                    style={{ "--slider-percent": `${(probabilityCutoff - 0.10) / 0.85 * 100}%` } as React.CSSProperties}
+                  />
+                  <small className="slider-hint">
+                    Uses calibrated GMM output probability. Alarms trigger only when absolute anomaly likelihood is high, preventing false alarms on secure feeds.
+                  </small>
+                </div>
+              )}
 
               <div className="action-buttons-strip">
                 <button

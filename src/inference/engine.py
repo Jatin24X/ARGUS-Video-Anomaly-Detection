@@ -540,8 +540,14 @@ class InferenceEngine:
             "elapsed": elapsed,
         }
 
-    def analyze_payload(self, video_path: object, profile_label: str, roi_sector: str = "full") -> dict[str, Any]:
-        analysis = self._run_analysis(video_path, profile_label, roi_sector=roi_sector)
+    def analyze_payload(
+        self,
+        video_path: object,
+        profile_label: str,
+        roi_sector: str = "full",
+        progress_callback: Callable[[float, str], None] | None = None,
+    ) -> dict[str, Any]:
+        analysis = self._run_analysis(video_path, profile_label, roi_sector=roi_sector, progress_callback=progress_callback)
         profile: InferenceProfile = analysis["profile"]
         cached_video = analysis["cached_video"]
         timestamps: np.ndarray = analysis["timestamps"]

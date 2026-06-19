@@ -22,11 +22,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest fastapi[all] httpx
+          pip install pytest pytest-cov fastapi[all] httpx
 
-      - name: Run Python unit tests
+      - name: Run Python unit tests with coverage
         run: |
-          pytest tests/ -v
+          pytest tests/ --cov=src --cov=deployment --cov-report=xml
 
   nextjs-build:
     runs-on: ubuntu-latest
