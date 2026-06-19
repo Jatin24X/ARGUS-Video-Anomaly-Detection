@@ -8,7 +8,7 @@ safetensors
 scikit-learn
 numpy
 scipy
-opencv-python
+opencv-python-headless
 PyYAML
 tqdm
 gradio

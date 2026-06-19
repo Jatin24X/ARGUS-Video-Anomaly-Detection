@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "installCommand": "npm ci --prefix deployment/vercel_app",
+  "buildCommand": "npm run build --prefix deployment/vercel_app",
+  "outputDirectory": "deployment/vercel_app/.next"
+}
