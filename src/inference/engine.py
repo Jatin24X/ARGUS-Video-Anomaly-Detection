@@ -193,7 +193,7 @@ def _select_gallery_indices(
     return selected
 
 
-def _encode_frame_data_uri(frame_rgb: np.ndarray, *, jpeg_quality: int = 90) -> str:
+def _encode_frame_data_uri(frame_rgb: np.ndarray, *, jpeg_quality: int = 80) -> str:
     ok, encoded = cv2.imencode(
         ".jpg",
         cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR),

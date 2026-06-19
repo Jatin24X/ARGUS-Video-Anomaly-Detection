@@ -205,14 +205,26 @@ class VideoMAEFeatureExtractor:
 
         logger.info("Loading pretrained weights from safetensors cache...")
         weights_path = hf_hub_download(repo_id=model_name, filename="model.safetensors")
-        state_dict = load_safetensors(weights_path, device="cpu")
+        
+        # Load weights directly to target device in half precision to optimize memory and speed
+        device_for_load = "cuda" if "cuda" in device else "cpu"
+        
+        # Move model to target device in half precision first
+        model = model.to(device=device_for_load, dtype=torch.float16)
+        
+        state_dict = load_safetensors(weights_path, device=device_for_load)
+        
+        # Convert state_dict tensors to float16 to match model
+        for k in list(state_dict.keys()):
+            state_dict[k] = state_dict[k].to(dtype=torch.float16)
+            
         missing, unexpected = model.load_state_dict(state_dict, strict=False)
         if missing:
             logger.warning(f"VideoMAEv2: {len(missing)} missing weight keys")
         if unexpected:
             logger.warning(f"VideoMAEv2: {len(unexpected)} unexpected weight keys")
 
-        self.model = model.half().to(device)
+        self.model = model
         self.model.eval()
 
         # ── Probe: detect true hidden_size and output format ───────────────

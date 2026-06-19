@@ -13,6 +13,7 @@ deployment/vercel_app/node_modules/
 deployment/vercel_app/out/
 deployment/vercel_app/.vercel/
 deployment/vercel_app/.env.local
+deployment/vercel_app/.env.development.local
 deployment/vercel_app/tsconfig.tsbuildinfo
 
 # Local runtime/temp files
