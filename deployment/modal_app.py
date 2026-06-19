@@ -72,7 +72,7 @@ def prime_backbone_cache() -> str:
     timeout=30 * 60,
     max_containers=1,
     min_containers=0,
-    scaledown_window=120,  # Scaledown after 2 minutes of idle time to save costs
+    scaledown_window=15,  # Scaledown after 15 seconds of idle time to save costs
     volumes={CACHE_DIR: hf_cache_volume},
 )
 class ArgusAPI:

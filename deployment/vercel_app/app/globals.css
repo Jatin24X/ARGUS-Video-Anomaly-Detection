@@ -1313,9 +1313,9 @@ p {
 /* Evidence Scroller Grid */
 .evidence-scroller-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 10px;
-  max-height: 180px;
+  max-height: 420px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1491,18 +1491,18 @@ p {
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 32px;
+  gap: 20px;
   width: 100%;
 }
 
 .bento-card {
   display: flex;
-  background: linear-gradient(135deg, rgba(8, 12, 18, 0.6) 0%, rgba(4, 6, 10, 0.8) 100%);
+  background: linear-gradient(135deg, rgba(13, 20, 30, 0.45) 0%, rgba(6, 10, 15, 0.65) 100%);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 24px;
-  padding: 24px;
+  padding: 20px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
@@ -1987,4 +1987,137 @@ p {
 
 .log-level-cpu {
   color: var(--orange);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Floating Navigation Dock
+   ────────────────────────────────────────────────────────────────────── */
+.floating-nav-dock {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(10, 15, 20, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  z-index: 1000;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.dock-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--muted);
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.dock-btn:hover {
+  color: var(--cyan);
+  background: rgba(41, 211, 255, 0.08);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Playback seek tuning controls
+   ────────────────────────────────────────────────────────────────────── */
+.video-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.player-seek-btn {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.player-seek-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(41, 211, 255, 0.04);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Staged Uploader File Card
+   ────────────────────────────────────────────────────────────────────── */
+.staged-file-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border: 1px solid var(--cyan);
+  border-radius: 12px;
+  background: rgba(41, 211, 255, 0.03);
+  padding: 20px;
+  text-align: center;
+  animation: fadeIn 0.2s ease;
+  box-shadow: 0 0 16px rgba(41, 211, 255, 0.06);
+}
+
+.staged-file-icon {
+  font-size: 2rem;
+  color: var(--cyan);
+  margin-bottom: 8px;
+}
+
+.staged-file-name {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 4px;
+  word-break: break-all;
+  max-width: 100%;
+}
+
+.staged-file-size {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.staged-buttons-strip {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 240px;
+}
+
+/* Play/Pause indicators overlay */
+.video-player-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
 }
