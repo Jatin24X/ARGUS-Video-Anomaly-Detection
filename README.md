@@ -80,10 +80,12 @@ Raw density scores vary dramatically depending on the video's lighting, backgrou
 ## 💻 Interactive Developer Console (Next.js)
 
 The Vercel-deployed frontend implements a high-density, premium developer dashboard designed to show deep system visibility:
-1. **Interactive SVG Architecture Map**: Visualizes the 7-stage ML pipeline. Clicking any node expands its input/output tensor shapes, engineering rationales, and the underlying python file paths.
-2. **0ms Client-Side Caching**: Analysis results and video thumbnails for all 7 sample clips across **all four sectors** (`full`, `center`, `left`, `right`) are pre-cached statically in JSON formats. Clicking a default video loads the complete timeline instantly, completely avoiding GPU cold-starts.
-3. **Dynamic Percentile Slider**: Recalculates anomaly alert thresholds and redraws timelines on the client side in real-time, separating threshold selection from GPU compute.
-4. **Active Siren HUD & Visual Evidence Cards**: Warning banners flash red during anomalous intervals, and visual cards show cropped frames at peak anomaly moments. Hovering over cards details the timestamps and anomaly scores.
+1. **Interactive SVG Architecture Map**: Visualizes the 7-stage ML pipeline. Clicking any node expands its input/output tensor shapes, engineering rationales, and provides direct clickable links to the underlying python source lines in the GitHub repository.
+2. **Default Live GPU Worker**: Executes live inference runs on the Modal backend by default on sample clicks or local uploads, streaming real-time hardware telemetry and serverless logs.
+3. **Resilient Cached Backup**: If the serverless GPU times out or fails, the frontend automatically falls back to local static pre-cached JSONs to ensure zero-downtime recruiter inspection.
+4. **Active visibility Heartbeat**: Maintains container warmth with a 10s silent heartbeat only when the browser tab is focused, scaling to zero 15s after the user leaves to minimize serverless costs.
+5. **Dynamic Percentile Slider**: Recalculates anomaly alert thresholds and redraws timelines on the client side in real-time, separating threshold selection from GPU compute.
+6. **Active Siren HUD & Visual Evidence Cards**: Warning banners flash red during anomalous intervals, and visual cards show cropped frames at peak anomaly moments. Hovering over cards details the timestamps and anomaly scores.
 
 ---
 
