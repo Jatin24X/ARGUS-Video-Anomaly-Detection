@@ -247,7 +247,106 @@ const recruiterQAs = [
   },
 ];
 
+const DEFAULT_PROFILES: Profile[] = [
+  {
+    key: "avenue",
+    label: "Avenue profile",
+    dataset_name: "Avenue",
+    headline: "Avenue analysis profile",
+    note: "Main saved Avenue profile for the standalone Stream A demo.",
+    badge: "Saved profile",
+    accent: "#0f766e",
+    benchmark_micro_auc_pct: "84.51%",
+    benchmark_macro_auc_pct: "85.14%"
+  },
+  {
+    key: "ubnormal",
+    label: "UBnormal profile",
+    dataset_name: "UBnormal",
+    headline: "UBnormal analysis profile",
+    note: "Locked Stream A profile kept in the demo for comparison.",
+    badge: "Saved profile",
+    accent: "#b45309",
+    benchmark_micro_auc_pct: "N/A",
+    benchmark_macro_auc_pct: "N/A"
+  }
+];
+
+const DEFAULT_SAMPLES: Sample[] = [
+  {
+    id: "avenue-1",
+    title: "Avenue 1",
+    dataset: "Avenue",
+    profile: "Avenue",
+    filename: "Avenue-1.mp4",
+    size_mb: 1.35,
+    video_url: "/static_videos/Avenue-1.mp4",
+    thumbnail_url: "/static_thumbnails/avenue-1.jpg"
+  },
+  {
+    id: "avenue-2",
+    title: "Avenue 2",
+    dataset: "Avenue",
+    profile: "Avenue",
+    filename: "Avenue-2.mp4",
+    size_mb: 1.19,
+    video_url: "/static_videos/Avenue-2.mp4",
+    thumbnail_url: "/static_thumbnails/avenue-2.jpg"
+  },
+  {
+    id: "avenue-3",
+    title: "Avenue 3",
+    dataset: "Avenue",
+    profile: "Avenue",
+    filename: "Avenue-3.mp4",
+    size_mb: 2.32,
+    video_url: "/static_videos/Avenue-3.mp4",
+    thumbnail_url: "/static_thumbnails/avenue-3.jpg"
+  },
+  {
+    id: "avenue",
+    title: "Avenue",
+    dataset: "Avenue",
+    profile: "Avenue",
+    filename: "Avenue.mp4",
+    size_mb: 1.69,
+    video_url: "/static_videos/Avenue.mp4",
+    thumbnail_url: "/static_thumbnails/avenue.jpg"
+  },
+  {
+    id: "ubnormal-1",
+    title: "Ubnormal 1",
+    dataset: "UBnormal",
+    profile: "UBnormal",
+    filename: "ubnormal-1.mp4",
+    size_mb: 3.15,
+    video_url: "/static_videos/ubnormal-1.mp4",
+    thumbnail_url: "/static_thumbnails/ubnormal-1.jpg"
+  },
+  {
+    id: "ubnormal-2",
+    title: "Ubnormal 2",
+    dataset: "UBnormal",
+    profile: "UBnormal",
+    filename: "ubnormal-2.mp4",
+    size_mb: 3.16,
+    video_url: "/static_videos/ubnormal-2.mp4",
+    thumbnail_url: "/static_thumbnails/ubnormal-2.jpg"
+  },
+  {
+    id: "ubnormal-3",
+    title: "Ubnormal 3",
+    dataset: "UBnormal",
+    profile: "UBnormal",
+    filename: "ubnormal-3.mp4",
+    size_mb: 29.48,
+    video_url: "/static_videos/ubnormal-3.mp4",
+    thumbnail_url: "/static_thumbnails/ubnormal-3.jpg"
+  }
+];
+
 function absoluteApiUrl(value: string): string {
+  if (value.startsWith("/static_")) return value;
   if (/^https?:\/\//.test(value)) return value;
   return `${API_BASE}${value}`;
 }
@@ -500,13 +599,13 @@ function TimelineChart({
 }
 
 export default function Page() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [samples, setSamples] = useState<Sample[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>(DEFAULT_PROFILES);
+  const [samples, setSamples] = useState<Sample[]>(DEFAULT_SAMPLES);
   const [health, setHealth] = useState<Health | null>(null);
   const [selectedKey, setSelectedKey] = useState("avenue");
-  const [selectedSample, setSelectedSample] = useState<Sample | null>(null);
+  const [selectedSample, setSelectedSample] = useState<Sample | null>(DEFAULT_SAMPLES[0]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("/static_videos/Avenue-1.mp4");
   const [mode, setMode] = useState<"samples" | "upload">("samples");
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -520,7 +619,7 @@ export default function Page() {
   const [qaOpen, setQaOpen] = useState<number | null>(null);
 
   // New cost-saving and UI states
-  const [executionMode, setExecutionMode] = useState<"live" | "cached">("live");
+  const [executionMode, setExecutionMode] = useState<"live" | "cached">("cached");
   const [isPaused, setIsPaused] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -647,47 +746,8 @@ export default function Page() {
     };
   }, [executionMode]);
 
-  // Load initial parameters and auto-select first video
-  useEffect(() => {
-    if (!API_BASE) {
-      setError("The API URL is not configured for this workspace.");
-      return;
-    }
-    const controller = new AbortController();
-    Promise.all([
-      fetch(`${API_BASE}/profiles`, { signal: controller.signal }).then((response) => response.json()),
-      fetch(`${API_BASE}/samples`, { signal: controller.signal }).then((response) => response.json()),
-      fetch(`${API_BASE}/health`, { signal: controller.signal }).then((response) => response.json()),
-    ])
-      .then(([profilePayload, samplePayload, healthPayload]) => {
-        setProfiles(profilePayload.profiles ?? []);
-        const loadedSamples = samplePayload.samples ?? [];
-        setSamples(loadedSamples);
-        setHealth(healthPayload);
-
-        if (profilePayload.profiles?.length) {
-          const defaultKey = profilePayload.profiles[0].key;
-          setSelectedKey(defaultKey);
-        }
-
-        if (loadedSamples.length > 0) {
-          // Select first sample and let the auto-trigger analyze it
-          const firstSample = loadedSamples[0];
-          setMode("samples");
-          setSelectedSample(firstSample);
-          setVideoFile(null);
-          setPreviewUrl(absoluteApiUrl(firstSample.video_url));
-          const profile = profilePayload.profiles.find((item: Profile) => item.dataset_name === firstSample.profile);
-          if (profile) setSelectedKey(profile.key);
-        }
-      })
-      .catch((cause: Error) => {
-        if (cause.name !== "AbortError") {
-          setError("Failed to fetch initial parameters. The backend service may be waking up.");
-        }
-      });
-    return () => controller.abort();
-  }, []);
+  // Statically initialized on client to prevent waking serverless GPU on initial load.
+  // API endpoints are only contacted when executionMode is switched to Live GPU Worker.
 
   // Timer counter for loading runs
   useEffect(() => {
@@ -1004,10 +1064,9 @@ export default function Page() {
       {/* Hero Header introducing Project Complexity */}
       <section id="top" className={`console-hero scroll-reveal ${visibleSections['top'] ? 'visible' : ''}`}>
         <div className="hero-left">
-          <div className="hero-eyebrow">// ENTERPRISE AUTONOMOUS VIDEO EXCEPTION INTELLIGENCE</div>
-          <h1>Zero-Shot Surveillance Exception Detection at the Edge.</h1>
+          <h1>Unsupervised Video Anomaly Detection Dashboard.</h1>
           <p>
-            ARGUS is an autonomous video exception core that flags security deviations in real-time streams.
+            ARGUS is a video anomaly detection core that flags unexpected behaviors in real-time streams.
             By projecting spatiotemporal Vision Transformer embeddings (<strong>VideoMAE-v2</strong>)
             into multi-scale density estimators (<strong>MULDE</strong>), the pipeline detects
             unmodeled behavior with mathematical precision without manual labeling.
@@ -1041,7 +1100,7 @@ export default function Page() {
           <div className="terminal-body">
             <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
               <code>
-                <span style={{ color: "#8b9eb0" }}>$ python -m src.inference.engine --profile enterprise-core</span>{"\n"}
+                <span style={{ color: "#8b9eb0" }}>$ python -m src.inference.engine --profile avenue</span>{"\n"}
                 <span className="log-level-sys">[INFRA]</span> Initializing VideoMAE-v2 backbone (ViT-Base, 86.2M frozen params){"\n"}
                 <span className="log-level-gpu">[MODEL]</span> Scorer configured: Multiscale Likelihood (MULDE){"\n"}
                 <span className="log-level-gpu">[MODEL]</span> Calibration: 1-Component Gaussian Mixture Model (GMM){"\n"}
@@ -1166,13 +1225,12 @@ export default function Page() {
       </section>
 
       {/* 3. Live Dashboard Workspace (The Bento Grid) */}
-      <section id="dashboard-section" className={`console-dashboard-workspace scroll-reveal ${visibleSections['dashboard-section'] ? 'visible' : ''}`}>
-        <div className="bento-grid">
+      <section id="dashboard-section" className={`console-dashboard-workspace scroll-reveal ${visibleSections['dashboard-section'] ? 'visible' : ''}`}>        <div className="bento-grid">
           
-          {/* Card 1: Video Player & Bounding Overlays (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col player-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 0 } as React.CSSProperties}>
+          {/* Card 1: Video Player & Bounding Overlays (col-span-6) */}
+          <div className="bento-card col-span-6 flex-col player-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 0 } as React.CSSProperties}>
             <div className="bento-card-header">
-              <h3>Live Operational Stream Monitor</h3>
+              <h3>Video Stream Monitor</h3>
               <span className="panel-badge-status">
                 {roiSector === "full" ? "FULL FRAME" : `ROI: ${roiSector.toUpperCase()}`}
               </span>
@@ -1263,15 +1321,206 @@ export default function Page() {
             )}
           </div>
 
-          {/* Card 2: Configuration & Parameters (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 1 } as React.CSSProperties}>
+          {/* Card 2: Anomaly Score Timeline (col-span-6) */}
+          <div className="bento-card col-span-6 flex-col graph-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 1 } as React.CSSProperties}>
             <div className="bento-card-header">
-              <h3>Inference & Threshold Controls</h3>
+              <h3>Anomaly Score Timeline</h3>
+              {analysis && (
+                <small className="monospace-filename">{analysis.analysis.video_name}</small>
+              )}
+            </div>
+            
+            <TimelineChart
+              timeline={analysis?.analysis.timeline ?? null}
+              activeThreshold={activeThreshold}
+              activeAnomalyRegions={activeAnomalyRegions}
+              accent={analysis?.profile.accent ?? "#29d3ff"}
+              currentTime={currentTime}
+              onSeek={(time) => {
+                if (videoRef.current) {
+                  videoRef.current.currentTime = time;
+                }
+              }}
+            />
+
+            {/* Anomaly Summary Metrics integrated inside graph card for compact layout */}
+            {analysis && (
+              <div className="summary-numbers-strip" style={{ marginTop: "15px", borderTop: "1px solid var(--border)", paddingTop: "15px" }}>
+                <div className="number-box">
+                  <span>PEAK ANOMALY SCORE</span>
+                  <strong>{activePeakScore.toFixed(3)}</strong>
+                </div>
+                <div className="number-box">
+                  <span>PEAK TIMESTAMP</span>
+                  <strong>{activePeakTime.toFixed(2)}s</strong>
+                </div>
+                <div className="number-box">
+                  <span>FRAMES SAMPLED</span>
+                  <strong>{analysis.analysis.summary.sampled_frame_count} / {analysis.analysis.summary.raw_frame_count}</strong>
+                </div>
+                <div className="number-box">
+                  <span>TEMPORAL CLIPS</span>
+                  <strong>{analysis.analysis.summary.clip_count}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card 3: Active Alarm Warning HUD (col-span-12) */}
+          <div className="col-span-12">
+            <div className={`alarm-alert-banner ${isCurrentlyAnomalous ? "alarm-triggered" : ""}`}>
+              <div className="alarm-indicator">
+                <span className="alarm-icon" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "16px", height: "16px", display: "inline-block", marginRight: "8px", verticalAlign: "-3px" }}>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                </span>
+                <span className="alarm-text">
+                  {isCurrentlyAnomalous
+                    ? `ANOMALY DETECTED | TIME: ${currentTime.toFixed(2)}s`
+                    : "STREAM SECURE | NO ANOMALIES"}
+                </span>
+              </div>
+              <div className="alarm-pulse-light" />
+            </div>
+          </div>
+
+          {/* Card 4: Captured Keyframes (col-span-4) */}
+          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 2 } as React.CSSProperties}>
+            <div className="bento-card-header">
+              <h3>Captured Keyframes</h3>
+            </div>
+            {analysis ? (
+              <div className="evidence-scroller-grid">
+                {analysis.analysis.frames.map((frame) => (
+                  <div
+                    key={`${frame.index}-${frame.timestamp_sec}`}
+                    className="frame-evidence-card"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = frame.timestamp_sec;
+                        videoRef.current.play().catch(() => {});
+                      }
+                    }}
+                  >
+                    <div className="frame-image-wrapper">
+                      <img src={frame.image_data_url} alt={`Frame at ${frame.timestamp_sec}s`} />
+                      <div className="frame-card-overlay">
+                        <span>SEEK FRAME</span>
+                      </div>
+                    </div>
+                    <div className="frame-caption">
+                      <span>{frame.timestamp_sec.toFixed(2)}s</span>
+                      <strong>Score: {frame.score.toFixed(3)}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state" style={{ height: "100%", minHeight: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
+                Select a video to display high-anomaly keyframes.
+              </div>
+            )}
+          </div>
+
+          {/* Card 5: Video Selection Panel (col-span-4) */}
+          <div className="bento-card col-span-4 flex-col gallery-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 3 } as React.CSSProperties}>
+            <div className="bento-card-header">
+              <h3>Video Selection Panel</h3>
+              <div className="tab-buttons">
+                <button id="tab-btn-gallery" className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Pre-Staged Streams</button>
+                <button id="tab-btn-upload" className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload Video</button>
+              </div>
+            </div>
+
+            {mode === "samples" ? (
+              <div className="gallery-layout flex-1">
+                <div className="gallery-grid">
+                  {samples.map((sample) => (
+                    <button
+                      key={sample.id}
+                      id={`gallery-sample-card-${sample.id}`}
+                      className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
+                      onClick={() => selectSample(sample)}
+                    >
+                      <div className="gallery-thumb-container">
+                        <img src={absoluteApiUrl(sample.thumbnail_url)} alt={sample.title} />
+                        <div className="gallery-card-badge">{sample.dataset}</div>
+                      </div>
+                      <div className="gallery-info">
+                        <b>{sample.title}</b>
+                        <small>{sample.size_mb} MB</small>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {samples.length === 0 && (
+                  <div className="loading-gallery-spinner">
+                    <div className="pulse-loader" />
+                    <span>Contacting serverless registry...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="uploader-layout flex-1">
+                {videoFile ? (
+                  <div className="staged-file-card">
+                    <span className="staged-file-icon">📁</span>
+                    <div className="staged-file-name">{videoFile.name}</div>
+                    <div className="staged-file-size">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</div>
+                    <div className="staged-buttons-strip">
+                      <button
+                        id="action-btn-staged-analyze"
+                        className="console-btn-primary"
+                        disabled={loading}
+                        onClick={runLiveAnalysis}
+                      >
+                        Analyze Video
+                      </button>
+                      <button
+                        id="action-btn-staged-clear"
+                        className="console-btn-secondary"
+                        style={{ color: "var(--red)" }}
+                        onClick={() => {
+                          setVideoFile(null);
+                          setPreviewUrl("");
+                          setAnalysis(null);
+                          setError("");
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="uploader-dropzone" htmlFor="console-video-upload">
+                    <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
+                    <span className="upload-arrow">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </span>
+                    <strong>Upload video from device</strong>
+                    <small>MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
+                  </label>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Card 6: Analysis & Threshold Controls (col-span-4) */}
+          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 4 } as React.CSSProperties}>
+            <div className="bento-card-header">
+              <h3>Analysis & Threshold Controls</h3>
             </div>
             
             <div className="config-grid">
               <div className="config-item">
-                <label>Execution Mode</label>
+                <label>Analysis Mode</label>
                 <div className="profile-buttons-group" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
                   <button
                     className={executionMode === "live" ? "profile-active-btn" : ""}
@@ -1350,7 +1599,7 @@ export default function Page() {
                   disabled={loading || !selectedProfile || (!selectedSample && !videoFile)}
                   onClick={runLiveAnalysis}
                 >
-                  <span>{loading ? progressCopy : "Execute Inference Pipeline"}</span>
+                  <span>{loading ? progressCopy : "Run Live Analysis"}</span>
                 </button>
 
                 {analysis && (
@@ -1370,118 +1619,10 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Card 3: Active Alarm Warning HUD (col-span-12) */}
-          <div className="col-span-12">
-            <div className={`alarm-alert-banner ${isCurrentlyAnomalous ? "alarm-triggered" : ""}`}>
-              <div className="alarm-indicator">
-                <span className="alarm-icon" style={{ display: "inline-flex", alignItems: "center" }}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "16px", height: "16px", display: "inline-block", marginRight: "8px", verticalAlign: "-3px" }}>
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                </span>
-                <span className="alarm-text">
-                  {isCurrentlyAnomalous
-                    ? `SURVEILLANCE EXCEPTION IN PROGRESS | TIME: ${currentTime.toFixed(2)}s`
-                    : "MONITOR SYSTEM SECURE | STREAMING FEED"}
-                </span>
-              </div>
-              <div className="alarm-pulse-light" />
-            </div>
-          </div>
-
-          {/* Card 4: Media Ingestion Portal (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col gallery-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 2 } as React.CSSProperties}>
+          {/* Card 7: System Telemetry & Logs HUD (col-span-8) */}
+          <div className="bento-card col-span-8 flex-col profiler-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 5 } as React.CSSProperties}>
             <div className="bento-card-header">
-              <h3>Media Ingestion Portal</h3>
-              <div className="tab-buttons">
-                <button id="tab-btn-gallery" className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Pre-Staged Streams</button>
-                <button id="tab-btn-upload" className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Ingest Local Container</button>
-              </div>
-            </div>
-
-            {mode === "samples" ? (
-              <div className="gallery-layout flex-1">
-                <div className="gallery-grid">
-                  {samples.map((sample) => (
-                    <button
-                      key={sample.id}
-                      id={`gallery-sample-card-${sample.id}`}
-                      className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
-                      onClick={() => selectSample(sample)}
-                    >
-                      <div className="gallery-thumb-container">
-                        <img src={absoluteApiUrl(sample.thumbnail_url)} alt={sample.title} />
-                        <div className="gallery-card-badge">{sample.dataset}</div>
-                      </div>
-                      <div className="gallery-info">
-                        <b>{sample.title}</b>
-                        <small>{sample.size_mb} MB</small>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                {samples.length === 0 && (
-                  <div className="loading-gallery-spinner">
-                    <div className="pulse-loader" />
-                    <span>Contacting serverless registry...</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="uploader-layout flex-1">
-                {videoFile ? (
-                  <div className="staged-file-card">
-                    <span className="staged-file-icon">📁</span>
-                    <div className="staged-file-name">{videoFile.name}</div>
-                    <div className="staged-file-size">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</div>
-                    <div className="staged-buttons-strip">
-                      <button
-                        id="action-btn-staged-analyze"
-                        className="console-btn-primary"
-                        disabled={loading}
-                        onClick={runLiveAnalysis}
-                      >
-                        Analyze Video
-                      </button>
-                      <button
-                        id="action-btn-staged-clear"
-                        className="console-btn-secondary"
-                        style={{ color: "var(--red)" }}
-                        onClick={() => {
-                          setVideoFile(null);
-                          setPreviewUrl("");
-                          setAnalysis(null);
-                          setError("");
-                        }}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <label className="uploader-dropzone" htmlFor="console-video-upload">
-                    <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
-                    <span className="upload-arrow">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    </span>
-                    <strong>Deploy local video container</strong>
-                    <small>MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
-                  </label>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Card 5: System Telemetry & Hardware HUD (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col profiler-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 3 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>System Telemetry & Hardware HUD</h3>
+              <h3>System Telemetry & Logs</h3>
               {analysis && (
                 <span className={`hud-badge ${cacheStatus === "cached" ? "badge-green" : cacheStatus === "fallback" ? "badge-orange" : "badge-green"}`}>
                   {cacheStatus === "cached" ? "Local Cache" : cacheStatus === "fallback" ? "Cached Backup" : "Live GPU execution"}
@@ -1532,65 +1673,18 @@ export default function Page() {
               </div>
             ) : (
               <div className="no-telemetry-placeholder flex-1">
-                Pipeline inactive. Ingest video source to read performance telemetry.
+                Pipeline inactive. Select a video to view performance telemetry.
               </div>
             )}
           </div>
 
-          {/* Card 6: Temporal Exception Signal Sequence (col-span-12) */}
-          <div className="bento-card col-span-12 flex-col graph-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 4 } as React.CSSProperties}>
+          {/* Card 8: Anomaly Alert Events (col-span-4) */}
+          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 6 } as React.CSSProperties}>
             <div className="bento-card-header">
-              <h3>Temporal Exception Signal Sequence</h3>
-              {analysis && (
-                <small className="monospace-filename">{analysis.analysis.video_name}</small>
-              )}
+              <h3>Anomaly Alert Events</h3>
+              {analysis && <small>{activeAnomalyRegions.length} alerts</small>}
             </div>
-            
-            <TimelineChart
-              timeline={analysis?.analysis.timeline ?? null}
-              activeThreshold={activeThreshold}
-              activeAnomalyRegions={activeAnomalyRegions}
-              accent={analysis?.profile.accent ?? "#29d3ff"}
-              currentTime={currentTime}
-              onSeek={(time) => {
-                if (videoRef.current) {
-                  videoRef.current.currentTime = time;
-                }
-              }}
-            />
-          </div>
-
-          {/* Card 7: Anomaly Summary Metrics (col-span-12) */}
-          {analysis && (
-            <div className="col-span-12">
-              <div className="summary-numbers-strip">
-                <div className="number-box">
-                  <span>PEAK EXCEPTION SCORE</span>
-                  <strong>{activePeakScore.toFixed(3)}</strong>
-                </div>
-                <div className="number-box">
-                  <span>EXCEPTION TIMESTAMP</span>
-                  <strong>{activePeakTime.toFixed(2)}s</strong>
-                </div>
-                <div className="number-box">
-                  <span>FRAMES SAMPLED</span>
-                  <strong>{analysis.analysis.summary.sampled_frame_count} / {analysis.analysis.summary.raw_frame_count}</strong>
-                </div>
-                <div className="number-box">
-                  <span>TEMPORAL CLIPS</span>
-                  <strong>{analysis.analysis.summary.clip_count}</strong>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Card 8: Active Incident Alert Log (col-span-6) */}
-          {analysis && (
-            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 5 } as React.CSSProperties}>
-              <div className="bento-card-header">
-                <h3>Active Incident Alert Log</h3>
-                <small>{activeAnomalyRegions.length} alerts</small>
-              </div>
+            {analysis ? (
               <div className="log-table-container">
                 <table className="log-table">
                   <thead>
@@ -1601,17 +1695,20 @@ export default function Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    {activeAnomalyRegions.map((region, idx) => {
-                      const timeline = analysis.analysis.timeline;
-                      const segmentScores = timeline.scores.slice(region.start_index, region.end_index + 1);
-                      const peakInSegment = segmentScores.length ? Math.max(...segmentScores) : 0;
+                    {activeAnomalyRegions.map((region, index) => {
+                      const regionScores = analysis.analysis.timeline.scores.slice(region.start_index, region.end_index + 1);
+                      const peakVal = regionScores.length ? Math.max(...regionScores) : 0;
                       return (
-                        <tr key={idx} className="log-row">
-                          <td className="monospace-td">{region.start_time_sec.toFixed(2)}s - {region.end_time_sec.toFixed(2)}s</td>
-                          <td className="monospace-td text-red">{peakInSegment.toFixed(3)}</td>
+                        <tr key={index}>
+                          <td className="monospace-cell">
+                            {region.start_time_sec.toFixed(1)}s - {region.end_time_sec.toFixed(1)}s
+                          </td>
+                          <td className="monospace-cell font-bold" style={{ color: "var(--cyan)" }}>
+                            {peakVal.toFixed(2)}
+                          </td>
                           <td>
                             <button
-                              className="log-seek-btn"
+                              className="seek-log-btn"
                               onClick={() => {
                                 if (videoRef.current) {
                                   videoRef.current.currentTime = region.start_time_sec;
@@ -1619,7 +1716,7 @@ export default function Page() {
                                 }
                               }}
                             >
-                              SEEK STREAM
+                              SEEK
                             </button>
                           </td>
                         </tr>
@@ -1627,7 +1724,7 @@ export default function Page() {
                     })}
                     {activeAnomalyRegions.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="empty-log-row">
+                        <td colSpan={3} className="empty-log-cell">
                           No exceptions flagged under current sensitivity threshold.
                         </td>
                       </tr>
@@ -1635,43 +1732,12 @@ export default function Page() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-
-          {/* Card 9: Visual Exception Evidence Logs (col-span-6) */}
-          {analysis && (
-            <div className="bento-card col-span-6 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 6 } as React.CSSProperties}>
-              <div className="bento-card-header">
-                <h3>Visual Exception Evidence Logs</h3>
+            ) : (
+              <div className="empty-state" style={{ height: "100%", minHeight: "180px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
+                Select a video to view alert logs.
               </div>
-              <div className="evidence-scroller-grid">
-                {analysis.analysis.frames.map((frame) => (
-                  <div
-                    key={`${frame.index}-${frame.timestamp_sec}`}
-                    className="frame-evidence-card"
-                    onClick={() => {
-                      if (videoRef.current) {
-                        videoRef.current.currentTime = frame.timestamp_sec;
-                        videoRef.current.play().catch(() => {});
-                      }
-                    }}
-                  >
-                    <div className="frame-image-wrapper">
-                      <img src={frame.image_data_url} alt={`Frame at ${frame.timestamp_sec}s`} />
-                      <div className="frame-card-overlay">
-                        <span>SEEK FRAME</span>
-                      </div>
-                    </div>
-                    <div className="frame-caption">
-                      <span>{frame.timestamp_sec.toFixed(2)}s</span>
-                      <strong>Score: {frame.score.toFixed(3)}</strong>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
+            )}
+          </div>
         </div>
       </section>
 
