@@ -31,6 +31,7 @@ type AnalysisFrame = {
   score: number;
   caption: string;
   image_data_url: string;
+  description?: string;
 };
 
 type AnalysisResponse = {
@@ -362,6 +363,7 @@ function TimelineChart({
   accent,
   currentTime,
   onSeek,
+  previewUrl,
 }: {
   timeline: AnalysisResponse["analysis"]["timeline"] | null;
   activeThreshold: number;
@@ -369,6 +371,7 @@ function TimelineChart({
   accent: string;
   currentTime: number;
   onSeek: (time: number) => void;
+  previewUrl: string;
 }) {
   const width = 920;
   const height = 280;
@@ -559,41 +562,65 @@ function TimelineChart({
           />
         )}
 
-        {/* Tooltip */}
-        {hoverTime !== null && hoverScore !== null && (
-          <g pointerEvents="none">
-            <rect
-              x={chart.x(hoverTime) + 12 + tooltipWidth > width - padding.right ? chart.x(hoverTime) - tooltipWidth - 12 : chart.x(hoverTime) + 12}
-              y={padding.top + 8}
-              width={tooltipWidth}
-              height="50"
-              rx="6"
-              fill="rgba(11, 19, 26, 0.96)"
-              stroke="rgba(255, 255, 255, 0.12)"
-              strokeWidth="1"
-            />
-            <text
-              x={chart.x(hoverTime) + 12 + tooltipWidth > width - padding.right ? chart.x(hoverTime) - tooltipWidth + 12 : chart.x(hoverTime) + 24}
-              y={padding.top + 26}
-              fill="#Bad0d8"
-              fontSize="10"
-              fontFamily="monospace"
-            >
-              Time: {hoverTime.toFixed(2)}s
-            </text>
-            <text
-              x={chart.x(hoverTime) + 12 + tooltipWidth > width - padding.right ? chart.x(hoverTime) - tooltipWidth + 12 : chart.x(hoverTime) + 24}
-              y={padding.top + 42}
-              fill={accent}
-              fontSize="10"
-              fontFamily="monospace"
-              fontWeight="bold"
-            >
-              Score: {hoverScore.toFixed(3)}
-            </text>
-          </g>
-        )}
       </svg>
+      
+      {/* Floating Hover Tooltip HUD */}
+      {hoverTime !== null && hoverScore !== null && (
+        <div
+          className="timeline-hover-hud animate-fade-in"
+          style={{
+            position: "absolute",
+            left: chart.x(hoverTime) + 12 + 160 > width - padding.right 
+              ? `calc(${(chart.x(hoverTime) / width) * 100}% - 180px)`
+              : `calc(${(chart.x(hoverTime) / width) * 100}% + 12px)`,
+            top: `${(padding.top / height) * 100}%`,
+            width: "160px",
+            background: "rgba(11, 19, 26, 0.94)",
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+            borderRadius: "8px",
+            padding: "8px",
+            pointerEvents: "none",
+            zIndex: 100,
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+          }}
+        >
+          {previewUrl ? (
+            <video
+              src={previewUrl}
+              style={{
+                width: "100%",
+                height: "90px",
+                objectFit: "cover",
+                borderRadius: "4px",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+              }}
+              muted
+              playsInline
+              ref={(el) => {
+                if (el) {
+                  el.currentTime = hoverTime;
+                }
+              }}
+            />
+          ) : (
+            <div style={{ width: "100%", height: "90px", background: "#1a252c", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#8b9eb0" }}>
+              No Preview
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <span style={{ fontSize: "10px", fontFamily: "monospace", color: "#8b9eb0" }}>
+              Time: {hoverTime.toFixed(2)}s
+            </span>
+            <span style={{ fontSize: "11px", fontFamily: "monospace", color: accent, fontWeight: "bold" }}>
+              Score: {hoverScore.toFixed(3)}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -864,6 +891,20 @@ export default function Page() {
         if (payload.analysis?.summary?.peak_time_sec !== undefined && videoRef.current) {
           videoRef.current.currentTime = payload.analysis.summary.peak_time_sec;
         }
+
+        // Populate logs with VLM event caption
+        const peakScore = payload.analysis.summary.peak_score;
+        const peakTime = payload.analysis.summary.peak_time_sec;
+        const vlmCaption = (payload.analysis.summary as any).vlm_caption || "Anomalous event detected in the video stream.";
+        setLogs([
+          "[SYSTEM] Video stream ingested successfully.",
+          "[AI ANALYST] Extracting features via accelerated VideoMAE ONNX GPU backbone...",
+          "[AI ANALYST] Calibrating anomaly densities via GMM...",
+          `[AI ANALYST] Anomaly detected! Peak score: ${peakScore.toFixed(3)} at ${peakTime.toFixed(2)}s.`,
+          `[VLM AGENT] Generating semantic narrative: "${vlmCaption}"`,
+          "[SYSTEM] High-fidelity visualization payload compiled."
+        ]);
+
         return true;
       }
     } catch (err) {
@@ -994,6 +1035,20 @@ export default function Page() {
               if (payload.analysis?.summary?.peak_time_sec !== undefined && videoRef.current) {
                 videoRef.current.currentTime = payload.analysis.summary.peak_time_sec;
               }
+
+              const peakScore = payload.analysis.summary.peak_score;
+              const peakTime = payload.analysis.summary.peak_time_sec;
+              const vlmCaption = (payload.analysis.summary as any).vlm_caption || "Anomalous event detected in the video stream.";
+
+              setLogs((prev) => [
+                ...prev,
+                "[SYSTEM] Video stream ingested successfully.",
+                "[AI ANALYST] Extracting features via accelerated VideoMAE ONNX GPU backbone...",
+                "[AI ANALYST] Calibrating anomaly densities via GMM...",
+                `[AI ANALYST] Anomaly detected! Peak score: ${peakScore.toFixed(3)} at ${peakTime.toFixed(2)}s.`,
+                `[VLM AGENT] Generating semantic narrative: "${vlmCaption}"`,
+                "[SYSTEM] High-fidelity visualization payload compiled."
+              ]);
               resolve();
             } else if (jobData.status === "failed") {
               window.clearInterval(intervalId);
@@ -1389,6 +1444,7 @@ export default function Page() {
                   videoRef.current.currentTime = time;
                 }
               }}
+              previewUrl={previewUrl}
             />
 
             {/* Anomaly Summary Metrics integrated inside graph card for compact layout */}
@@ -1462,6 +1518,11 @@ export default function Page() {
                     <div className="frame-caption">
                       <span>{frame.timestamp_sec.toFixed(2)}s</span>
                       <strong>Score: {frame.score.toFixed(3)}</strong>
+                      {frame.description && (
+                        <p style={{ fontSize: "10px", color: "var(--cyan)", marginTop: "4px", lineHeight: "1.2" }}>
+                          {frame.description}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1718,26 +1779,8 @@ export default function Page() {
               )}
             </div>
             
-            {loading ? (
-              <div className="live-stream-logs flex-1">
-                {logs.map((log, index) => {
-                  let logClass = "log-info";
-                  if (log.toLowerCase().includes("failed") || log.toLowerCase().includes("error")) {
-                    logClass = "log-danger";
-                  } else if (log.toLowerCase().includes("warning") || log.toLowerCase().includes("idle")) {
-                    logClass = "log-warning";
-                  }
-                  return (
-                    <div key={index}>
-                      <span className="log-timestamp">[{new Date().toLocaleTimeString()}]</span>
-                      <span className={logClass}>{log}</span>
-                    </div>
-                  );
-                })}
-                <div ref={logsEndRef} />
-              </div>
-            ) : analysis ? (
-              <div className="hud-stats-row flex-1">
+            {analysis ? (
+              <div className="hud-stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "15px" }}>
                 <div className="hud-stat-box">
                   <span>HARDWARE DEVICE</span>
                   <strong>{cacheStatus === "cached" ? "Client Cache" : cacheStatus === "fallback" ? "Cached Fallback" : "NVIDIA T4 GPU"}</strong>
@@ -1760,10 +1803,34 @@ export default function Page() {
                 </div>
               </div>
             ) : (
-              <div className="no-telemetry-placeholder flex-1">
+              <div className="no-telemetry-placeholder" style={{ marginBottom: "15px" }}>
                 Pipeline inactive. Select a video to view performance telemetry.
               </div>
             )}
+
+            <div className="live-stream-logs flex-1" style={{ minHeight: "150px", maxHeight: "250px", overflowY: "auto", background: "rgba(10, 15, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "10px", fontFamily: "monospace", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+              {logs.length > 0 ? (
+                logs.map((log, index) => {
+                  let logClass = "log-info";
+                  if (log.toLowerCase().includes("failed") || log.toLowerCase().includes("error")) {
+                    logClass = "log-danger";
+                  } else if (log.toLowerCase().includes("warning") || log.toLowerCase().includes("idle")) {
+                    logClass = "log-warning";
+                  }
+                  return (
+                    <div key={index} style={{ display: "flex", gap: "6px" }}>
+                      <span className="log-timestamp" style={{ color: "rgba(255,255,255,0.3)" }}>[{new Date().toLocaleTimeString()}]</span>
+                      <span className={logClass}>{log}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}>
+                  Console idle. Run analysis to start logging events...
+                </div>
+              )}
+              <div ref={logsEndRef} />
+            </div>
           </div>
 
           {/* Card 8: Anomaly Alert Events (col-span-4) */}

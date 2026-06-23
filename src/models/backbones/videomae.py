@@ -20,15 +20,49 @@ Optimized for NVIDIA L4 (24GB VRAM), 8 vCPUs, 32GB RAM on Lightning AI.
 
 from pathlib import Path
 from typing import List
+import os
 
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 from src.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+# ──────────────────────────────────────────────────────────────────────
+# Monkey patching utility to capture intermediate ViT attention weights
+# ──────────────────────────────────────────────────────────────────────
+def patch_attention_forward(attn_module):
+    def new_forward(x):
+        B, N, C = x.shape
+        qkv_bias = None
+        if attn_module.q_bias is not None:
+            qkv_bias = torch.cat(
+                (attn_module.q_bias,
+                 torch.zeros_like(attn_module.v_bias, requires_grad=False), 
+                 attn_module.v_bias)
+            )
+        qkv = F.linear(input=x, weight=attn_module.qkv.weight, bias=qkv_bias)
+        qkv = qkv.reshape(B, N, 3, attn_module.num_heads, -1).permute(2, 0, 3, 1, 4)
+        q, k, v = qkv[0], qkv[1], qkv[2]
+
+        q = q * attn_module.scale
+        attn = (q @ k.transpose(-2, -1))
+        attn = attn.softmax(dim=-1)
+        
+        # Save attention weights
+        attn_module.captured_attn = attn
+        
+        attn_dropped = attn_module.attn_drop(attn)
+        x_out = (attn_dropped @ v).transpose(1, 2).reshape(B, N, -1)
+        x_out = attn_module.proj(x_out)
+        x_out = attn_module.proj_drop(x_out)
+        return x_out
+        
+    attn_module.forward = new_forward
 
 # ──────────────────────────────────────────────────────────────────────
 # Global backend tuning for L4 Tensor Cores
@@ -172,9 +206,10 @@ class VideoMAEFeatureExtractor:
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         self.device = device
+        self.dtype = torch.float16 if "cuda" in device else torch.float32
         self.model_name = model_name
 
-        logger.info(f"Loading VideoMAEv2 backbone: {model_name} on {device} (FP16)")
+        logger.info(f"Loading VideoMAEv2 backbone: {model_name} on {device} ({'FP16' if self.dtype == torch.float16 else 'FP32'})")
 
         from transformers import AutoConfig, AutoModel, VideoMAEImageProcessor
         from huggingface_hub import hf_hub_download
@@ -206,17 +241,14 @@ class VideoMAEFeatureExtractor:
         logger.info("Loading pretrained weights from safetensors cache...")
         weights_path = hf_hub_download(repo_id=model_name, filename="model.safetensors")
         
-        # Load weights directly to target device in half precision to optimize memory and speed
-        device_for_load = "cuda" if "cuda" in device else "cpu"
+        # Load weights directly to target device in the matching precision
+        model = model.to(device=self.device, dtype=self.dtype)
         
-        # Move model to target device in half precision first
-        model = model.to(device=device_for_load, dtype=torch.float16)
+        state_dict = load_safetensors(weights_path, device=self.device)
         
-        state_dict = load_safetensors(weights_path, device=device_for_load)
-        
-        # Convert state_dict tensors to float16 to match model
+        # Convert state_dict tensors to target precision to match model
         for k in list(state_dict.keys()):
-            state_dict[k] = state_dict[k].to(dtype=torch.float16)
+            state_dict[k] = state_dict[k].to(dtype=self.dtype)
             
         missing, unexpected = model.load_state_dict(state_dict, strict=False)
         if missing:
@@ -234,7 +266,7 @@ class VideoMAEFeatureExtractor:
         # Doing this once here avoids per-batch conditionals later.
         with torch.no_grad():
             _probe = torch.zeros(1, 3, CLIP_LENGTH, FRAME_SIZE, FRAME_SIZE,
-                                 dtype=torch.float16, device=device)
+                                 dtype=self.dtype, device=self.device)
             try:
                 _out = self.model(pixel_values=_probe)
                 self._kw = "pixel_values"
@@ -262,9 +294,45 @@ class VideoMAEFeatureExtractor:
                 )
             del _probe, _out
 
+        # Monkey-patch final attention blocks (9, 10, 11) for spatiotemporal rollout explainability
+        self.patched_attn_modules = []
+        for i in [9, 10, 11]:
+            try:
+                module = self.model.get_submodule(f"model.blocks.{i}.attn")
+                patch_attention_forward(module)
+                self.patched_attn_modules.append(module)
+                logger.info(f"Successfully monkey-patched layer {i} attention block.")
+            except Exception as e:
+                logger.warning(f"Could not patch layer {i} attention block: {e}")
+
+        # ONNX acceleration and dynamic compile setup
+        self.use_onnx = False
+        if device == "cuda":
+            try:
+                import onnxruntime as ort
+                self.onnx_path = Path(os.environ.get("HF_HOME", "/cache/huggingface")) / "videomae_base_fp16.onnx"
+                self.onnx_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                if not self.onnx_path.exists():
+                    logger.info(f"ONNX backbone not found at {self.onnx_path}. Initiating automatic export...")
+                    self._export_to_onnx(self.model, self.onnx_path, device)
+                
+                logger.info(f"Loading VideoMAE backbone via ONNX Runtime from {self.onnx_path}")
+                sess_options = ort.SessionOptions()
+                sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                self.ort_session = ort.InferenceSession(
+                    str(self.onnx_path),
+                    sess_options,
+                    providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+                )
+                self.use_onnx = True
+            except Exception as e:
+                logger.warning(f"Failed to load ONNX backbone or onnxruntime not available. Falling back to native PyTorch: {e}")
+
         logger.info(
             f"VideoMAEv2 loaded: hidden_size={self.hidden_size}, "
             f"output_mode={self._output_mode}, "
+            f"use_onnx={self.use_onnx}, "
             f"params={sum(p.numel() for p in self.model.parameters()) / 1e6:.1f}M"
         )
 
@@ -313,27 +381,36 @@ class VideoMAEFeatureExtractor:
             # batch shape: [B, 16, 3, 224, 224]  (from Dataset)
             # CRITICAL: VideoMAEv2 expects [B, C, T, H, W] = [B, 3, 16, 224, 224]
             batch = batch.permute(0, 2, 1, 3, 4)
-            batch = batch.to(self.device, non_blocking=True)
 
-            with torch.autocast(
-                device_type="cuda" if "cuda" in self.device else "cpu",
-                dtype=torch.float16,
-            ):
-                if self._kw == "pixel_values":
-                    outputs = self.model(pixel_values=batch)
+            if self.use_onnx:
+                ort_inputs = {self.ort_session.get_inputs()[0].name: batch.numpy()}
+                ort_outputs = self.ort_session.run(None, ort_inputs)
+                pooled_np = ort_outputs[0].astype(np.float16)
+                all_features.append(pooled_np)
+            else:
+                batch = batch.to(device=self.device, dtype=self.dtype, non_blocking=True)
+                if "cuda" in self.device:
+                    with torch.autocast(device_type="cuda", dtype=torch.float16):
+                        if self._kw == "pixel_values":
+                            outputs = self.model(pixel_values=batch)
+                        else:
+                            outputs = self.model(batch)
                 else:
-                    outputs = self.model(batch)
+                    if self._kw == "pixel_values":
+                        outputs = self.model(pixel_values=batch)
+                    else:
+                        outputs = self.model(batch)
 
-            # Extract patch token embeddings and mean-pool → [B, hidden_size]
-            if self._output_mode == "tensor":
-                raw = outputs
-                pooled = raw.mean(dim=1) if raw.dim() == 3 else raw
-            elif self._output_mode == "pooler_output":
-                pooled = outputs.pooler_output
-            else:  # last_hidden_state
-                pooled = outputs.last_hidden_state.mean(dim=1)
+                # Extract patch token embeddings and mean-pool → [B, hidden_size]
+                if self._output_mode == "tensor":
+                    raw = outputs
+                    pooled = raw.mean(dim=1) if raw.dim() == 3 else raw
+                elif self._output_mode == "pooler_output":
+                    pooled = outputs.pooler_output
+                else:  # last_hidden_state
+                    pooled = outputs.last_hidden_state.mean(dim=1)
 
-            all_features.append(pooled.cpu().numpy().astype(np.float16))
+                all_features.append(pooled.cpu().numpy().astype(np.float16))
 
         if not all_features:
             return np.empty((0, self.hidden_size), dtype=np.float16)
@@ -346,12 +423,7 @@ class VideoMAEFeatureExtractor:
         frames_rgb: List[np.ndarray],
         batch_size: int = 16,
     ) -> np.ndarray:
-        """Extract VideoMAEv2 features directly from in-memory RGB frames.
-
-        This avoids the demo-time temp-folder roundtrip of writing JPEGs and
-        reading them back through OpenCV, which is noticeably slower on local
-        machines for short interactive runs.
-        """
+        """Extract VideoMAEv2 features directly from in-memory RGB frames."""
         if not frames_rgb:
             return np.empty((0, self.hidden_size), dtype=np.float16)
 
@@ -374,17 +446,131 @@ class VideoMAEFeatureExtractor:
 
         for batch in dataloader:
             batch = batch.permute(0, 2, 1, 3, 4)
-            batch = batch.to(self.device, non_blocking=True)
 
-            with torch.autocast(
-                device_type="cuda" if "cuda" in self.device else "cpu",
-                dtype=torch.float16,
-            ):
-                if self._kw == "pixel_values":
-                    outputs = self.model(pixel_values=batch)
+            if self.use_onnx:
+                ort_inputs = {self.ort_session.get_inputs()[0].name: batch.numpy()}
+                ort_outputs = self.ort_session.run(None, ort_inputs)
+                pooled_np = ort_outputs[0].astype(np.float16)
+                all_features.append(pooled_np)
+            else:
+                batch = batch.to(device=self.device, dtype=self.dtype, non_blocking=True)
+                if "cuda" in self.device:
+                    with torch.autocast(device_type="cuda", dtype=torch.float16):
+                        if self._kw == "pixel_values":
+                            outputs = self.model(pixel_values=batch)
+                        else:
+                            outputs = self.model(batch)
                 else:
-                    outputs = self.model(batch)
+                    if self._kw == "pixel_values":
+                        outputs = self.model(pixel_values=batch)
+                    else:
+                        outputs = self.model(batch)
 
+                if self._output_mode == "tensor":
+                    raw = outputs
+                    pooled = raw.mean(dim=1) if raw.dim() == 3 else raw
+                elif self._output_mode == "pooler_output":
+                    pooled = outputs.pooler_output
+                else:
+                    pooled = outputs.last_hidden_state.mean(dim=1)
+
+                all_features.append(pooled.cpu().numpy().astype(np.float16))
+
+        if not all_features:
+            return np.empty((0, self.hidden_size), dtype=np.float16)
+
+        return np.concatenate(all_features, axis=0)
+
+    def _export_to_onnx(self, model, onnx_path: Path, device: str):
+        import onnx
+        from onnxconverter_common import float16
+        
+        logger.info("Building ONNX export wrapper...")
+        class ONNXVideoMAEWrapper(torch.nn.Module):
+            def __init__(self, inner_model, output_mode):
+                super().__init__()
+                self.inner_model = inner_model
+                self.output_mode = output_mode
+
+            def forward(self, pixel_values):
+                outputs = self.inner_model(pixel_values)
+                if isinstance(outputs, torch.Tensor):
+                    raw = outputs
+                elif hasattr(outputs, "last_hidden_state"):
+                    raw = outputs.last_hidden_state
+                elif hasattr(outputs, "pooler_output") and outputs.pooler_output is not None:
+                    return outputs.pooler_output
+                else:
+                    raw = outputs[0]
+                return raw.mean(dim=1)
+
+        wrapper = ONNXVideoMAEWrapper(model, self._output_mode)
+        wrapper.eval()
+        
+        # Export in float32 for stability
+        dummy_input = torch.randn(1, 3, CLIP_LENGTH, FRAME_SIZE, FRAME_SIZE, dtype=torch.float32, device=device)
+        wrapper = wrapper.to(device=device, dtype=torch.float32)
+        wrapper.inner_model = wrapper.inner_model.to(dtype=torch.float32)
+        
+        tmp_path = onnx_path.with_suffix(".tmp.onnx")
+        logger.info(f"Tracing PyTorch model and saving temporary FP32 ONNX to {tmp_path}...")
+        
+        with torch.no_grad():
+            torch.onnx.export(
+                wrapper,
+                dummy_input,
+                str(tmp_path),
+                input_names=["pixel_values"],
+                output_names=["features"],
+                dynamic_axes={
+                    "pixel_values": {0: "batch_size"},
+                    "features": {0: "batch_size"}
+                },
+                opset_version=17
+            )
+            
+        logger.info("Converting ONNX model to FP16 half precision...")
+        model_fp32 = onnx.load(str(tmp_path))
+        model_fp16 = float16.convert_float16(model_fp32, keep_ids_limits=True)
+        onnx.save(model_fp16, str(onnx_path))
+        
+        # Clean up temporary FP32 file
+        if tmp_path.exists():
+            tmp_path.unlink()
+            
+        # Restore PyTorch model to original dtype
+        wrapper.inner_model = wrapper.inner_model.to(dtype=self.dtype)
+        logger.info("ONNX FP16 export completed successfully.")
+
+    def generate_explainability_heatmap(
+        self,
+        clip_frames: List[np.ndarray],
+        scorer: torch.nn.Module,
+        target_device: str = "cuda"
+    ) -> np.ndarray:
+        """Compute gradient-weighted multi-layer attention rollout for 16-frame clip."""
+        # Prepare clip tensor
+        clip_array = np.stack(clip_frames).transpose(0, 3, 1, 2)  # [16, 3, 224, 224]
+        clip_tensor = torch.from_numpy(clip_array).unsqueeze(0).float().div_(255.0)
+        mean_t = torch.tensor(self.image_mean, dtype=torch.float32).view(3, 1, 1)
+        std_t = torch.tensor(self.image_std, dtype=torch.float32).view(3, 1, 1)
+        clip_tensor = (clip_tensor - mean_t) / std_t
+        clip_tensor = clip_tensor.permute(0, 2, 1, 3, 4)  # [1, 3, 16, 224, 224]
+        
+        device = "cuda" if torch.cuda.is_available() and "cuda" in target_device else "cpu"
+        dtype = torch.float16 if "cuda" in device else torch.float32
+        clip_tensor = clip_tensor.to(device, dtype=dtype).requires_grad_(True)
+        
+        self.model.zero_grad()
+        scorer.zero_grad()
+        
+        # Enable gradient computation locally for the explainability backward pass
+        with torch.enable_grad():
+            if self._kw == "pixel_values":
+                outputs = self.model(pixel_values=clip_tensor)
+            else:
+                outputs = self.model(clip_tensor)
+                
             if self._output_mode == "tensor":
                 raw = outputs
                 pooled = raw.mean(dim=1) if raw.dim() == 3 else raw
@@ -392,10 +578,61 @@ class VideoMAEFeatureExtractor:
                 pooled = outputs.pooler_output
             else:
                 pooled = outputs.last_hidden_state.mean(dim=1)
-
-            all_features.append(pooled.cpu().numpy().astype(np.float16))
-
-        if not all_features:
-            return np.empty((0, self.hidden_size), dtype=np.float16)
-
-        return np.concatenate(all_features, axis=0)
+                
+            # Retain gradients of intermediate attention maps
+            attn_weights = {}
+            for i in [9, 10, 11]:
+                module = self.model.get_submodule(f"model.blocks.{i}.attn")
+                if hasattr(module, "captured_attn") and module.captured_attn is not None:
+                    attn_weights[i] = module.captured_attn
+                    attn_weights[i].retain_grad()
+                    
+            # Scorer forward
+            x = scorer._standardize_features(pooled)
+            score = 0.0
+            for sigma_val in scorer._get_eval_sigmas():
+                sigma_tensor = torch.full((1, 1), float(sigma_val), device=device, dtype=x.dtype)
+                net_input = torch.cat([x, sigma_tensor], dim=1)
+                log_density = scorer.network(net_input)
+                score -= log_density.sum()
+                
+            score.backward()
+            
+        # Compute rollout map
+        rollout_map = None
+        num_tokens = 1568  # 8 * 14 * 14
+        identity = torch.eye(num_tokens, device=device, dtype=dtype)
+        
+        for i in [9, 10, 11]:
+            if i not in attn_weights or attn_weights[i].grad is None:
+                continue
+            
+            attn = attn_weights[i]  # [1, 12, 1568, 1568]
+            grad = attn.grad  # [1, 12, 1568, 1568]
+            
+            weights = torch.clamp(grad, min=0)
+            m_l = (weights * attn).sum(dim=1).squeeze(0)  # [1568, 1568]
+            
+            max_val = m_l.max()
+            if max_val > 0:
+                m_l = m_l / max_val
+                
+            m_l_prime = 0.5 * identity + 0.5 * m_l
+            
+            if rollout_map is None:
+                rollout_map = m_l_prime
+            else:
+                rollout_map = torch.matmul(m_l_prime, rollout_map)
+                
+        if rollout_map is None:
+            rollout_map = identity
+            
+        h_j = rollout_map.mean(dim=0).detach().cpu().numpy().astype(np.float32)
+        h_j = h_j.reshape(8, 14, 14)
+        heatmap_14x14 = h_j.mean(axis=0)
+        
+        max_val = heatmap_14x14.max()
+        if max_val > 0:
+            heatmap_14x14 = heatmap_14x14 / max_val
+            
+        return heatmap_14x14

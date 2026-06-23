@@ -11,12 +11,13 @@ CACHE_DIR = "/cache/huggingface"
 APP_NAME = "argus-stream-a-api"
 
 hf_cache_volume = modal.Volume.from_name("argus-stream-a-hf-cache", create_if_missing=True)
+feature_cache_volume = modal.Volume.from_name("argus-feature-cache", create_if_missing=True)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg", "libgl1", "libglib2.0-0")
     .pip_install_from_requirements(str(LOCAL_ROOT / "deployment" / "requirements.txt"))
-    .pip_install("hf_transfer")
+    .pip_install("hf_transfer", "onnxruntime-gpu", "onnx", "onnxconverter-common", "einops")
     .env(
         {
             "ARGUS_STREAM_A_ROOT": REMOTE_ROOT,
@@ -73,7 +74,10 @@ def prime_backbone_cache() -> str:
     max_containers=1,
     min_containers=0,
     scaledown_window=15,  # Scaledown after 15 seconds of idle time to save costs
-    volumes={CACHE_DIR: hf_cache_volume},
+    volumes={
+        CACHE_DIR: hf_cache_volume,
+        "/cache/features": feature_cache_volume,
+    },
 )
 class ArgusAPI:
     @modal.enter()

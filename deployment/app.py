@@ -44,6 +44,7 @@ def run_async_analysis(
     video_path: Path,
     profile_label: str,
     roi_sector: str,
+    bypass_cache: bool = False,
     delete_source: bool = False,
 ) -> None:
     JOBS[job_id] = {
@@ -63,6 +64,7 @@ def run_async_analysis(
             video_path,
             profile_label,
             roi_sector=roi_sector,
+            bypass_cache=bypass_cache,
             progress_callback=progress_cb,
         )
         JOBS[job_id]["status"] = "completed"
@@ -270,12 +272,17 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
         background_tasks: BackgroundTasks,
         profile: str | None = None,
         roi_sector: str = "full",
+        bypass_cache: bool = False,
     ) -> dict[str, object]:
         path = _sample_path(sample_id)
         catalog_entry = next(
             sample for sample in _sample_catalog() if sample["id"] == sample_id
         )
         profile_label = _resolve_profile_label(profile or str(catalog_entry["profile"]))
+        
+        from src.inference.engine import generate_video_hash
+        video_hash = generate_video_hash(path)
+        LOGGER.info(f"Analyzing sample video {sample_id} (bypass_cache={bypass_cache}) with content hash: {video_hash}")
         
         job_id = f"job-{uuid.uuid4()}"
         background_tasks.add_task(
@@ -284,6 +291,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
             path,
             profile_label,
             roi_sector,
+            bypass_cache=bypass_cache,
             delete_source=False,
         )
         return {"job_id": job_id, "status": "queued"}
@@ -293,6 +301,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
         background_tasks: BackgroundTasks,
         profile: str = Form(...),
         roi_sector: str = Form("full"),
+        bypass_cache: bool = Form(False),
         video: UploadFile = File(...),
     ) -> dict[str, object]:
         profile_label = _resolve_profile_label(profile)
@@ -335,6 +344,10 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
         finally:
             await video.close()
 
+        from src.inference.engine import generate_video_hash
+        video_hash = generate_video_hash(temp_path)
+        LOGGER.info(f"Analyzing uploaded video with content hash: {video_hash}")
+
         job_id = f"job-{uuid.uuid4()}"
         background_tasks.add_task(
             run_async_analysis,
@@ -342,6 +355,7 @@ def create_fastapi_app(*, preload: bool = False) -> FastAPI:
             temp_path,
             profile_label,
             roi_sector,
+            bypass_cache=bypass_cache,
             delete_source=True,
         )
         return {"job_id": job_id, "status": "queued"}
