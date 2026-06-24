@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Profile = {
   key: string;
@@ -565,64 +566,149 @@ function TimelineChart({
       </svg>
       
       {/* Floating Hover Tooltip HUD */}
-      {hoverTime !== null && hoverScore !== null && (
-        <div
-          className="timeline-hover-hud animate-fade-in"
-          style={{
-            position: "absolute",
-            left: chart.x(hoverTime) + 12 + 160 > width - padding.right 
-              ? `calc(${(chart.x(hoverTime) / width) * 100}% - 180px)`
-              : `calc(${(chart.x(hoverTime) / width) * 100}% + 12px)`,
-            top: `${(padding.top / height) * 100}%`,
-            width: "160px",
-            background: "rgba(11, 19, 26, 0.94)",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            borderRadius: "8px",
-            padding: "8px",
-            pointerEvents: "none",
-            zIndex: 100,
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "6px",
-          }}
-        >
-          {previewUrl ? (
-            <video
-              src={previewUrl}
-              style={{
-                width: "100%",
-                height: "90px",
-                objectFit: "cover",
-                borderRadius: "4px",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-              }}
-              muted
-              playsInline
-              ref={(el) => {
-                if (el) {
-                  el.currentTime = hoverTime;
-                }
-              }}
-            />
-          ) : (
-            <div style={{ width: "100%", height: "90px", background: "#1a252c", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#8b9eb0" }}>
-              No Preview
+      <AnimatePresence>
+        {hoverTime !== null && hoverScore !== null && (
+          <motion.div
+            className="timeline-hover-hud"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1, 
+              y: 0,
+              left: `${(chart.x(hoverTime) / width) * 100}%`,
+              x: chart.x(hoverTime) + 12 + 160 > width - padding.right ? -180 : 12
+            }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: "spring", stiffness: 220, damping: 18 }}
+            style={{
+              position: "absolute",
+              top: `${(padding.top / height) * 100}%`,
+              width: "160px",
+              background: "rgba(11, 19, 26, 0.94)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              borderRadius: "8px",
+              padding: "8px",
+              pointerEvents: "none",
+              zIndex: 100,
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(8px)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            {previewUrl ? (
+              <video
+                src={previewUrl}
+                style={{
+                  width: "100%",
+                  height: "90px",
+                  objectFit: "cover",
+                  borderRadius: "4px",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                }}
+                muted
+                playsInline
+                ref={(el) => {
+                  if (el) {
+                    el.currentTime = hoverTime;
+                  }
+                }}
+              />
+            ) : (
+              <div style={{ width: "100%", height: "90px", background: "#1a252c", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#8b9eb0" }}>
+                No Preview
+              </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <span style={{ fontSize: "10px", fontFamily: "monospace", color: "#8b9eb0" }}>
+                Time: {hoverTime.toFixed(2)}s
+              </span>
+              <span style={{ fontSize: "11px", fontFamily: "monospace", color: accent, fontWeight: "bold" }}>
+                Score: {hoverScore.toFixed(3)}
+              </span>
             </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "10px", fontFamily: "monospace", color: "#8b9eb0" }}>
-              Time: {hoverTime.toFixed(2)}s
-            </span>
-            <span style={{ fontSize: "11px", fontFamily: "monospace", color: accent, fontWeight: "bold" }}>
-              Score: {hoverScore.toFixed(3)}
-            </span>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
+}
+
+async function generatePlaceholderHeatmap(videoUrl: string, timestamp: number, isAnomalous: boolean): Promise<string> {
+  return new Promise((resolve) => {
+    const tempVideo = document.createElement("video");
+    tempVideo.src = videoUrl;
+    tempVideo.crossOrigin = "anonymous";
+    tempVideo.muted = true;
+    tempVideo.playsInline = true;
+    tempVideo.currentTime = timestamp;
+
+    tempVideo.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const w = tempVideo.videoWidth || 640;
+        const h = tempVideo.videoHeight || 360;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+          return;
+        }
+
+        // Draw original video frame
+        ctx.drawImage(tempVideo, 0, 0, w, h);
+
+        // Radial heatmap gradient
+        const gradX = w / 2;
+        const gradY = h / 2;
+        const radius = Math.min(w, h) * (isAnomalous ? 0.3 : 0.2);
+        const gradient = ctx.createRadialGradient(gradX, gradY, 2, gradX, gradY, radius);
+        
+        if (isAnomalous) {
+          gradient.addColorStop(0, "rgba(255, 0, 0, 0.55)");
+          gradient.addColorStop(0.2, "rgba(255, 100, 0, 0.35)");
+          gradient.addColorStop(0.6, "rgba(255, 255, 0, 0.12)");
+          gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+          
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(gradX, gradY, radius, 0, 2 * Math.PI);
+          ctx.fill();
+
+          // Green contour box
+          ctx.strokeStyle = "#00FF00";
+          ctx.lineWidth = 3;
+          const boxW = w * 0.32;
+          const boxH = h * 0.42;
+          ctx.strokeRect(gradX - boxW / 2, gradY - boxH / 2, boxW, boxH);
+        } else {
+          gradient.addColorStop(0, "rgba(0, 150, 255, 0.25)");
+          gradient.addColorStop(0.5, "rgba(0, 255, 255, 0.08)");
+          gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+          
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(gradX, gradY, radius, 0, 2 * Math.PI);
+          ctx.fill();
+        }
+
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      } catch (err) {
+        resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+      } finally {
+        tempVideo.remove();
+      }
+    };
+
+    tempVideo.onerror = () => {
+      resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+      tempVideo.remove();
+    };
+
+    tempVideo.load();
+  });
 }
 
 export default function Page() {
@@ -649,6 +735,7 @@ export default function Page() {
 
   // New cost-saving and UI states
   const [executionMode, setExecutionMode] = useState<"live" | "cached">("cached");
+  const [bypassCache, setBypassCache] = useState(false);
   const [isPaused, setIsPaused] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -771,8 +858,57 @@ export default function Page() {
     };
   }, [executionMode]);
 
-  // Statically initialized on client to prevent waking serverless GPU on initial load.
-  // API endpoints are only contacted when executionMode is switched to Live GPU Worker.
+  // Dynamic Live API Sync Hook
+  useEffect(() => {
+    if (!API_BASE || executionMode !== "live") {
+      setSamples(DEFAULT_SAMPLES);
+      setProfiles(DEFAULT_PROFILES);
+      return;
+    }
+
+    const fetchLiveConfig = async () => {
+      try {
+        const healthRes = await fetch(`${API_BASE}/health`);
+        if (!healthRes.ok) throw new Error("Health check failed");
+        const healthData = await healthRes.json();
+        setHealth(healthData);
+
+        const profilesRes = await fetch(`${API_BASE}/profiles`);
+        if (profilesRes.ok) {
+          const profilesData = await profilesRes.json();
+          if (profilesData.profiles) {
+            setProfiles(profilesData.profiles);
+          }
+        }
+
+        const samplesRes = await fetch(`${API_BASE}/samples`);
+        if (samplesRes.ok) {
+          const samplesData = await samplesRes.json();
+          if (samplesData.samples) {
+            const resolvedSamples = samplesData.samples.map((s: Sample) => ({
+              ...s,
+              video_url: s.video_url.startsWith("http") ? s.video_url : absoluteApiUrl(s.video_url),
+              thumbnail_url: s.thumbnail_url.startsWith("http") ? s.thumbnail_url : absoluteApiUrl(s.thumbnail_url),
+            }));
+            setSamples(resolvedSamples);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live configuration from API:", err);
+        setSamples(DEFAULT_SAMPLES);
+        setProfiles(DEFAULT_PROFILES);
+      }
+    };
+
+    fetchLiveConfig();
+  }, [executionMode]);
+
+  // Safe selected sample sync
+  useEffect(() => {
+    if (samples.length > 0 && (!selectedSample || !samples.find(s => s.id === selectedSample.id))) {
+      setSelectedSample(samples[0]);
+    }
+  }, [samples]);
 
   // Timer counter for loading runs
   useEffect(() => {
@@ -905,6 +1041,30 @@ export default function Page() {
           "[SYSTEM] High-fidelity visualization payload compiled."
         ]);
 
+        // Dynamic canvas fallback for cached mode (resolves placeholder GIFs)
+        const videoUrl = absoluteApiUrl(selectedSample ? selectedSample.video_url : "/static_videos/Avenue-1.mp4");
+        
+        Promise.all(payload.analysis.frames.map(async (frame) => {
+          if (frame.image_data_url.startsWith("data:image/gif;base64,")) {
+            const threshold = payload.analysis.timeline.threshold || 0.5;
+            const isAnomalous = frame.score >= threshold;
+            const dataUrl = await generatePlaceholderHeatmap(videoUrl, frame.timestamp_sec, isAnomalous);
+            return { ...frame, image_data_url: dataUrl };
+          }
+          return frame;
+        })).then((updatedFrames) => {
+          setAnalysis((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              analysis: {
+                ...prev.analysis,
+                frames: updatedFrames,
+              },
+            };
+          });
+        });
+
         return true;
       }
     } catch (err) {
@@ -979,12 +1139,14 @@ export default function Page() {
         const query = new URLSearchParams({
           profile: selectedProfile.label,
           roi_sector: roiSector,
+          bypass_cache: bypassCache.toString(),
         });
         response = await fetch(`${API_BASE}/samples/${selectedSample.id}/analyze?${query}`, { method: "POST" });
       } else {
         const body = new FormData();
         body.append("profile", selectedProfile.label);
         body.append("roi_sector", roiSector);
+        body.append("bypass_cache", bypassCache.toString());
         body.append("video", videoFile!);
         response = await fetch(`${API_BASE}/analyze`, { method: "POST", body });
       }
@@ -1472,7 +1634,25 @@ export default function Page() {
 
           {/* Card 3: Active Alarm Warning HUD (col-span-12) */}
           <div className="col-span-12">
-            <div className={`alarm-alert-banner ${isCurrentlyAnomalous ? "alarm-triggered" : ""}`}>
+            <motion.div 
+              className={`alarm-alert-banner ${isCurrentlyAnomalous ? "alarm-triggered" : ""}`}
+              animate={isCurrentlyAnomalous ? {
+                borderColor: ["rgba(255, 90, 96, 0.4)", "rgba(255, 90, 96, 1)", "rgba(255, 90, 96, 0.4)"],
+                boxShadow: [
+                  "0 0 8px rgba(255, 90, 96, 0.1)",
+                  "0 0 20px rgba(255, 90, 96, 0.35)",
+                  "0 0 8px rgba(255, 90, 96, 0.1)"
+                ]
+              } : {
+                borderColor: "rgba(140, 180, 200, 0.09)",
+                boxShadow: "0 0 0px rgba(0, 0, 0, 0)"
+              }}
+              transition={isCurrentlyAnomalous ? {
+                repeat: Infinity,
+                duration: 2,
+                ease: "easeInOut"
+              } : { duration: 0.3 }}
+            >
               <div className="alarm-indicator">
                 <span className="alarm-icon" style={{ display: "inline-flex", alignItems: "center" }}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "16px", height: "16px", display: "inline-block", marginRight: "8px", verticalAlign: "-3px" }}>
@@ -1488,7 +1668,7 @@ export default function Page() {
                 </span>
               </div>
               <div className="alarm-pulse-light" />
-            </div>
+            </motion.div>
           </div>
 
           {/* Card 4: Captured Keyframes (col-span-4) */}
@@ -1499,9 +1679,11 @@ export default function Page() {
             {analysis ? (
               <div className="evidence-scroller-grid">
                 {analysis.analysis.frames.map((frame) => (
-                  <div
+                  <motion.div
                     key={`${frame.index}-${frame.timestamp_sec}`}
                     className="frame-evidence-card"
+                    whileHover={{ scale: 1.03, y: -4 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
                     onClick={() => {
                       if (videoRef.current) {
                         videoRef.current.currentTime = frame.timestamp_sec;
@@ -1524,7 +1706,7 @@ export default function Page() {
                         </p>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             ) : (
@@ -1645,6 +1827,36 @@ export default function Page() {
                   </button>
                 </div>
               </div>
+
+              {executionMode === "live" && (
+                <div className="config-item" style={{ marginTop: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                    <label style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>Bypass Feature Cache</label>
+                    <label className="switch" style={{ position: "relative", display: "inline-block", width: "40px", height: "20px" }}>
+                      <input
+                        type="checkbox"
+                        checked={bypassCache}
+                        onChange={(e) => setBypassCache(e.target.checked)}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span className="slider" style={{
+                        position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: bypassCache ? "var(--cyan)" : "rgba(255, 255, 255, 0.08)",
+                        transition: "0.3s",
+                        borderRadius: "20px",
+                        border: "1px solid rgba(255, 255, 255, 0.15)"
+                      }}>
+                        <span style={{
+                          position: "absolute", content: "''", height: "12px", width: "12px", left: bypassCache ? "22px" : "4px", bottom: "3px",
+                          backgroundColor: "#fff",
+                          transition: "0.3s",
+                          borderRadius: "50%"
+                        }} />
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div className="config-item">
                 <label>Target Dataset Profile</label>
@@ -1780,7 +1992,7 @@ export default function Page() {
             </div>
             
             {analysis ? (
-              <div className="hud-stats-row" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "15px" }}>
+              <div className="hud-stats-row" style={{ marginBottom: "15px" }}>
                 <div className="hud-stat-box">
                   <span>HARDWARE DEVICE</span>
                   <strong>{cacheStatus === "cached" ? "Client Cache" : cacheStatus === "fallback" ? "Cached Fallback" : "NVIDIA T4 GPU"}</strong>
@@ -1809,25 +2021,37 @@ export default function Page() {
             )}
 
             <div className="live-stream-logs flex-1" style={{ minHeight: "150px", maxHeight: "250px", overflowY: "auto", background: "rgba(10, 15, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "10px", fontFamily: "monospace", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
-              {logs.length > 0 ? (
+               {logs.length > 0 ? (
                 logs.map((log, index) => {
+                  if (!log) return null;
+                  const logStr = String(log);
                   let logClass = "log-info";
-                  if (log.toLowerCase().includes("failed") || log.toLowerCase().includes("error")) {
+                  if (logStr.toLowerCase().includes("failed") || logStr.toLowerCase().includes("error")) {
                     logClass = "log-danger";
-                  } else if (log.toLowerCase().includes("warning") || log.toLowerCase().includes("idle")) {
+                  } else if (logStr.toLowerCase().includes("warning") || logStr.toLowerCase().includes("idle")) {
                     logClass = "log-warning";
                   }
                   return (
-                    <div key={index} style={{ display: "flex", gap: "6px" }}>
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                      style={{ display: "flex", gap: "6px" }}
+                    >
                       <span className="log-timestamp" style={{ color: "rgba(255,255,255,0.3)" }}>[{new Date().toLocaleTimeString()}]</span>
                       <span className={logClass}>{log}</span>
-                    </div>
+                    </motion.div>
                   );
                 })
               ) : (
-                <div style={{ color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  style={{ color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}
+                >
                   Console idle. Run analysis to start logging events...
-                </div>
+                </motion.div>
               )}
               <div ref={logsEndRef} />
             </div>
