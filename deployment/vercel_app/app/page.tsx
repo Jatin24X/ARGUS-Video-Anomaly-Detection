@@ -1182,7 +1182,7 @@ export default function Page() {
               const progressMsg = `[MODEL] ${jobData.step} (${jobData.progress_pct}% complete)...`;
               setLogs((prev) => {
                 // Prevent duplicate consecutive logs of the same step/pct
-                if (prev.length > 0 && prev[prev.length - 1].includes(jobData.step) && prev[prev.length - 1].includes(`${jobData.progress_pct}%`)) {
+                if (prev.length > 0 && prev[prev.length - 1] && prev[prev.length - 1].includes(jobData.step) && prev[prev.length - 1].includes(`${jobData.progress_pct}%`)) {
                   return prev;
                 }
                 return [...prev, progressMsg];
