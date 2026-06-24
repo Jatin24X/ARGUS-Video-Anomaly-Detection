@@ -245,7 +245,7 @@ const recruiterQAs = [
   },
   {
     q: "How are cold-starts and costs managed in serverless GPU environments?",
-    a: "To minimize infrastructure expenses, we deployed the inference pipeline on Modal using a class-based ASGI serverless design with an aggressive 15-second scale-to-zero window. This eliminates idle GPU billing, reducing operational costs by >85%. To prevent serverless cold-starts (~35s T4 boot time) from harming recruiter inspections, we implemented: (1) Background Pre-Warming (opening the console fires a pre-warm call to initiate the GPU worker); (2) Active Visibility Heartbeats (a 10s client-side heartbeat keeps the container warm only while the tab is active); (3) Tab Focus Warmup Hooks (the heartbeat immediately pauses on tab blur, letting the GPU scale-to-zero instantly, and triggers a fast re-warm the moment the tab is focused again); and (4) Dual Execution Switcher (operators can toggle between Live GPU Worker and Instant Demo (Cache), which serves pre-computed analysis payloads in under 10ms for a frictionless testing experience).",
+    a: "To minimize infrastructure expenses, we deployed the inference pipeline on Modal using a class-based ASGI serverless design with an aggressive 15-second scale-to-zero window. This eliminates idle GPU billing, reducing operational costs by >85%. To prevent serverless cold-starts (~35s T4 boot time) from harming recruiter inspections, we implemented: (1) Background Pre-Warming (opening the console fires a pre-warm call to initiate the GPU worker); (2) Active Visibility Heartbeats (a 10s client-side heartbeat keeps the container warm only while the tab is active); and (3) Tab Focus Warmup Hooks (the heartbeat immediately pauses on tab blur, letting the GPU scale-to-zero instantly, and triggers a fast re-warm the moment the tab is focused again).",
   },
 ];
 
@@ -734,7 +734,7 @@ export default function Page() {
   const [qaOpen, setQaOpen] = useState<number | null>(null);
 
   // New cost-saving and UI states
-  const [executionMode, setExecutionMode] = useState<"live" | "cached">("cached");
+  const [executionMode, setExecutionMode] = useState<"live" | "cached">("live");
   const [bypassCache, setBypassCache] = useState(false);
   const [isPaused, setIsPaused] = useState(true);
 
@@ -744,12 +744,12 @@ export default function Page() {
 
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
   const [logs, setLogs] = useState<string[]>([]);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto scroll live logs terminal to bottom
+  // Auto scroll live logs terminal to bottom (container-only, preventing full-page scroll jumps)
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
     }
   }, [logs]);
 
@@ -1810,53 +1810,33 @@ export default function Page() {
             </div>
             
             <div className="config-grid">
-              <div className="config-item">
-                <label>Analysis Mode</label>
-                <div className="profile-buttons-group" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-                  <button
-                    className={executionMode === "live" ? "profile-active-btn" : ""}
-                    onClick={() => setExecutionMode("live")}
-                  >
-                    Live GPU Worker
-                  </button>
-                  <button
-                    className={executionMode === "cached" ? "profile-active-btn" : ""}
-                    onClick={() => setExecutionMode("cached")}
-                  >
-                    Instant Demo
-                  </button>
+              <div className="config-item" style={{ marginTop: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                  <label style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>Bypass Feature Cache</label>
+                  <label className="switch" style={{ position: "relative", display: "inline-block", width: "40px", height: "20px" }}>
+                    <input
+                      type="checkbox"
+                      checked={bypassCache}
+                      onChange={(e) => setBypassCache(e.target.checked)}
+                      style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span className="slider" style={{
+                      position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: bypassCache ? "var(--cyan)" : "rgba(255, 255, 255, 0.08)",
+                      transition: "0.3s",
+                      borderRadius: "20px",
+                      border: "1px solid rgba(255, 255, 255, 0.15)"
+                    }}>
+                      <span style={{
+                        position: "absolute", content: "''", height: "12px", width: "12px", left: bypassCache ? "22px" : "4px", bottom: "3px",
+                        backgroundColor: "#fff",
+                        transition: "0.3s",
+                        borderRadius: "50%"
+                      }} />
+                    </span>
+                  </label>
                 </div>
               </div>
-
-              {executionMode === "live" && (
-                <div className="config-item" style={{ marginTop: "4px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                    <label style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>Bypass Feature Cache</label>
-                    <label className="switch" style={{ position: "relative", display: "inline-block", width: "40px", height: "20px" }}>
-                      <input
-                        type="checkbox"
-                        checked={bypassCache}
-                        onChange={(e) => setBypassCache(e.target.checked)}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span className="slider" style={{
-                        position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: bypassCache ? "var(--cyan)" : "rgba(255, 255, 255, 0.08)",
-                        transition: "0.3s",
-                        borderRadius: "20px",
-                        border: "1px solid rgba(255, 255, 255, 0.15)"
-                      }}>
-                        <span style={{
-                          position: "absolute", content: "''", height: "12px", width: "12px", left: bypassCache ? "22px" : "4px", bottom: "3px",
-                          backgroundColor: "#fff",
-                          transition: "0.3s",
-                          borderRadius: "50%"
-                        }} />
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              )}
 
               <div className="config-item">
                 <label>Target Dataset Profile</label>
@@ -2020,7 +2000,7 @@ export default function Page() {
               </div>
             )}
 
-            <div className="live-stream-logs flex-1" style={{ minHeight: "150px", maxHeight: "250px", overflowY: "auto", background: "rgba(10, 15, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "10px", fontFamily: "monospace", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div className="live-stream-logs flex-1" ref={logsContainerRef} style={{ minHeight: "150px", maxHeight: "250px", overflowY: "auto", background: "rgba(10, 15, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "10px", fontFamily: "monospace", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
                {logs.length > 0 ? (
                 logs.map((log, index) => {
                   if (!log) return null;
@@ -2053,7 +2033,6 @@ export default function Page() {
                   Console idle. Run analysis to start logging events...
                 </motion.div>
               )}
-              <div ref={logsEndRef} />
             </div>
           </div>
 
