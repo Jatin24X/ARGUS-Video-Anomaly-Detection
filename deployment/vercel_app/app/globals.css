@@ -1,3 +1,6 @@
+/* Reading this as: Security Operations Dashboard for technical recruiters and vision operators, with an industrial tactical telemetry vibe, leaning toward a hybrid of brutalist data density and premium soft-depth visual style. */
+/* DIALS: DESIGN_VARIANCE: 5 | MOTION_INTENSITY: 6 | VISUAL_DENSITY: 7 */
+
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 :root {
@@ -807,7 +810,95 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
+
+/* Premium Tactical HUD Overlays for Video Stream Monitor */
+.hud-bracket {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--cyan);
+  pointer-events: none;
+  z-index: 12;
+  opacity: 0.65;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 0 5px var(--cyan));
+}
+.hud-bracket-tl {
+  top: 12px;
+  left: 12px;
+  border-right: 0;
+  border-bottom: 0;
+}
+.hud-bracket-tr {
+  top: 12px;
+  right: 12px;
+  border-left: 0;
+  border-bottom: 0;
+}
+.hud-bracket-bl {
+  bottom: 12px;
+  left: 12px;
+  border-right: 0;
+  border-top: 0;
+}
+.hud-bracket-br {
+  bottom: 12px;
+  right: 12px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.hud-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+  z-index: 11;
+  opacity: 0.3;
+}
+.hud-crosshair::before,
+.hud-crosshair::after {
+  content: '';
+  position: absolute;
+  background: var(--cyan);
+}
+.hud-crosshair::before {
+  top: 14px;
+  left: 0;
+  width: 30px;
+  height: 2px;
+}
+.hud-crosshair::after {
+  top: 0;
+  left: 14px;
+  width: 2px;
+  height: 30px;
+}
+
+.hud-scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--cyan), transparent);
+  opacity: 0.3;
+  z-index: 11;
+  pointer-events: none;
+  animation: scan-sweep 6s linear infinite;
+}
+
+@keyframes scan-sweep {
+  0% { top: 0%; }
+  50% { top: 100%; }
+  100% { top: 0%; }
+}
+
 
 .video-positioner {
   width: 100%;
@@ -1114,10 +1205,19 @@ p {
 }
 
 .hud-stat-box {
-  background: var(--panel-strong);
+  background: rgba(255, 255, 255, 0.015);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px;
+  border-left: 3px solid var(--cyan);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition: all 0.2s ease;
+}
+
+.hud-stat-box:hover {
+  border-color: rgba(41, 211, 255, 0.25);
+  border-left-color: var(--mint);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .hud-stat-box span {
@@ -1502,24 +1602,22 @@ p {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   Bento Grid Layout & Cards
+   Bento Grid Layout & Cards (Double-Bezel Nested Architecture)
    ────────────────────────────────────────────────────────────────────── */
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 20px;
+  gap: 24px;
   width: 100%;
 }
 
-.bento-card {
+.bento-card-shell {
   display: flex;
-  background: linear-gradient(135deg, rgba(13, 20, 30, 0.45) 0%, rgba(6, 10, 15, 0.65) 100%);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
-  padding: 20px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 28px;
+  padding: 6px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   transition: border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
               transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
@@ -1531,49 +1629,54 @@ p {
   --mouse-y: 0px;
 }
 
-.bento-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), transparent);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.bento-card::after {
+.bento-card-shell::after {
   content: '';
   position: absolute;
   inset: 0;
   background: radial-gradient(
     300px circle at var(--mouse-x) var(--mouse-y),
-    rgba(41, 211, 255, 0.08),
+    rgba(41, 211, 255, 0.06),
     transparent 80%
   );
   opacity: 0;
   transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
+  z-index: 2;
+}
+
+.bento-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(10, 16, 26, 0.6) 0%, rgba(5, 8, 12, 0.8) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
   z-index: 1;
 }
 
-.bento-card:hover {
+.bento-card-shell:hover {
   transform: translateY(-4px);
-  border-color: rgba(41, 211, 255, 0.35);
-  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 0 20px rgba(41, 211, 255, 0.06);
+  border-color: rgba(41, 211, 255, 0.25);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.65), 0 0 24px rgba(41, 211, 255, 0.05);
 }
 
-.bento-card:hover::after {
+.bento-card-shell:hover::after {
   opacity: 1;
 }
 
-.scroll-reveal:not(.visible) .bento-card {
+.scroll-reveal:not(.visible) .bento-card-shell {
   opacity: 0 !important;
   transform: translateY(24px) !important;
 }
 
-.scroll-reveal.visible .bento-card {
+.scroll-reveal.visible .bento-card-shell {
   opacity: 1;
 }
 
@@ -1746,8 +1849,27 @@ p {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
+  .bento-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .col-span-6 {
+    grid-column: span 3 / span 3;
+  }
+  .col-span-4 {
+    grid-column: span 3 / span 3;
+  }
+  .col-span-8, .col-span-12 {
+    grid-column: span 6 / span 6;
+  }
+}
+
+@media (max-width: 960px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
   .col-span-4, .col-span-6, .col-span-8, .col-span-12 {
-    grid-column: span 12 / span 12;
+    grid-column: span 1 / span 1;
   }
 }
 
@@ -2022,6 +2144,7 @@ p {
   animation: blink 1s step-end infinite;
   vertical-align: middle;
   margin-left: 4px;
+  box-shadow: 0 0 8px var(--mint);
 }
 
 @keyframes blink {
@@ -2171,4 +2294,33 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   pointer-events: none;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Tactical Monospace & Glowing Exception Indicators
+   ────────────────────────────────────────────────────────────────────── */
+.font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+@keyframes alert-pulse-glow {
+  0%, 100% {
+    border-color: rgba(255, 90, 96, 0.4);
+    box-shadow: 0 0 12px rgba(255, 90, 96, 0.15), inset 0 0 10px rgba(255, 90, 96, 0.05);
+  }
+  50% {
+    border-color: rgba(255, 90, 96, 1);
+    box-shadow: 0 0 24px rgba(255, 90, 96, 0.55), inset 0 0 18px rgba(255, 90, 96, 0.2);
+  }
+}
+
+.alarm-alert-banner.alarm-triggered {
+  animation: alert-pulse-glow 2s infinite ease-in-out !important;
+  border-width: 1.5px !important;
+}
+
+.timeline-region-alert {
+  fill: rgba(255, 90, 96, 0.16) !important;
+  stroke: rgba(255, 90, 96, 0.25);
+  stroke-width: 0.5;
 }

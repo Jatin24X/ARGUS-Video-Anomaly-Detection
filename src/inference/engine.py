@@ -687,13 +687,8 @@ class InferenceEngine:
                 display_frames = []
                 model_frames = []
                 sampled_indices = []
-                all_features = []
-                
-                extractor = self._get_extractor()
-                required_len = (self.batch_size - 1) * TEMPORAL_STRIDE + CLIP_LENGTH
-                next_clip_idx = 0
 
-                progress_callback(0.25, "Decoding & extracting features via ONNX GPU backbone")
+                progress_callback(0.25, "Decoding video frames")
                 
                 while True:
                     item = decoder.queue.get()
@@ -706,18 +701,8 @@ class InferenceEngine:
                     model_frames.append(model_f)
                     sampled_indices.append(frame_idx)
                     
-                    batch_end_frame_idx = next_clip_idx * TEMPORAL_STRIDE + required_len
-                    if len(model_frames) >= batch_end_frame_idx:
-                        slice_start = next_clip_idx * TEMPORAL_STRIDE
-                        slice_end = batch_end_frame_idx
-                        sub_frames = model_frames[slice_start:slice_end]
-                        
-                        batch_feats = extractor.extract_from_frames(sub_frames, batch_size=self.batch_size)
-                        all_features.append(batch_feats)
-                        next_clip_idx += self.batch_size
-                        
-                        pct = min(0.70, 0.25 + 0.45 * (len(model_frames) / max(1, decoder.raw_frame_total)))
-                        progress_callback(pct, f"Extracting clip embeddings ({len(model_frames)} frames)")
+                    pct = min(0.55, 0.25 + 0.30 * (len(model_frames) / max(1, decoder.raw_frame_total or 720)))
+                    progress_callback(pct, f"Decoding video frames ({len(model_frames)} frames)")
 
                 num_frames = len(model_frames)
                 if num_frames < CLIP_LENGTH:
@@ -726,15 +711,13 @@ class InferenceEngine:
                         f"Need at least {CLIP_LENGTH} sampled frames and only found "
                         f"{num_frames}."
                     )
+
+                progress_callback(0.55, "Loading VideoMAE backbone")
+                extractor = self._get_extractor()
+
+                progress_callback(0.60, f"Extracting clip embeddings ({num_frames} frames)")
+                features = extractor.extract_from_frames(model_frames, batch_size=self.batch_size)
                 
-                total_clips = (num_frames - CLIP_LENGTH) // TEMPORAL_STRIDE + 1
-                if next_clip_idx < total_clips:
-                    slice_start = next_clip_idx * TEMPORAL_STRIDE
-                    sub_frames = model_frames[slice_start:]
-                    batch_feats = extractor.extract_from_frames(sub_frames, batch_size=self.batch_size)
-                    all_features.append(batch_feats)
-                    
-                features = np.concatenate(all_features, axis=0) if all_features else np.empty((0, extractor.hidden_size), dtype=np.float16)
                 timestamps = (
                     np.asarray(sampled_indices, dtype=np.float64) / decoder.source_fps
                     if sampled_indices

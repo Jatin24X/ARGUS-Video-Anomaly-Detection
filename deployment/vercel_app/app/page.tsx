@@ -1,5 +1,8 @@
 "use client";
 
+/* Reading this as: Security Operations Dashboard for technical recruiters and vision operators, with an industrial tactical telemetry vibe, leaning toward a hybrid of brutalist data density and premium soft-depth visual style. */
+/* DIALS: DESIGN_VARIANCE: 5 | MOTION_INTENSITY: 6 | VISUAL_DENSITY: 7 */
+
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -529,37 +532,43 @@ function TimelineChart({
 
         {/* Playback tracking vertical line */}
         {currentTime !== undefined && currentTime > 0 && currentTime <= chart.maxX && (
-          <line
+          <motion.line
             x1={chart.x(currentTime)}
             x2={chart.x(currentTime)}
             y1={padding.top}
             y2={height - padding.bottom}
             className="playhead-line"
             pointerEvents="none"
+            animate={{ x1: chart.x(currentTime), x2: chart.x(currentTime) }}
+            transition={{ type: "spring", stiffness: 170, damping: 19 }}
           />
         )}
 
         {/* Hover vertical tracing line */}
         {hoverTime !== null && (
-          <line
+          <motion.line
             x1={chart.x(hoverTime)}
             x2={chart.x(hoverTime)}
             y1={padding.top}
             y2={height - padding.bottom}
             className="hover-tracing-line"
             pointerEvents="none"
+            animate={{ x1: chart.x(hoverTime), x2: chart.x(hoverTime) }}
+            transition={{ type: "spring", stiffness: 170, damping: 19 }}
           />
         )}
 
         {/* Snapping sliding cursor dot */}
         {hoverTime !== null && hoverScore !== null && (
-          <circle
+          <motion.circle
             cx={chart.x(hoverTime)}
             cy={chart.y(hoverScore)}
             r="6"
             className="timeline-chart-cursor-dot"
             style={{ "--accent": accent } as React.CSSProperties}
             pointerEvents="none"
+            animate={{ cx: chart.x(hoverTime), cy: chart.y(hoverScore) }}
+            transition={{ type: "spring", stiffness: 170, damping: 19 }}
           />
         )}
 
@@ -569,7 +578,7 @@ function TimelineChart({
       <AnimatePresence>
         {hoverTime !== null && hoverScore !== null && (
           <motion.div
-            className="timeline-hover-hud"
+            className="timeline-hover-hud font-mono"
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ 
               opacity: 1, 
@@ -579,7 +588,7 @@ function TimelineChart({
               x: chart.x(hoverTime) + 12 + 160 > width - padding.right ? -180 : 12
             }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ type: "spring", stiffness: 220, damping: 18 }}
+            transition={{ type: "spring", stiffness: 170, damping: 19 }}
             style={{
               position: "absolute",
               top: `${(padding.top / height) * 100}%`,
@@ -620,11 +629,11 @@ function TimelineChart({
                 No Preview
               </div>
             )}
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              <span style={{ fontSize: "10px", fontFamily: "monospace", color: "#8b9eb0" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }} className="font-mono">
+              <span style={{ fontSize: "10px", color: "#8b9eb0" }}>
                 Time: {hoverTime.toFixed(2)}s
               </span>
-              <span style={{ fontSize: "11px", fontFamily: "monospace", color: accent, fontWeight: "bold" }}>
+              <span style={{ fontSize: "11px", color: accent, fontWeight: "bold" }}>
                 Score: {hoverScore.toFixed(3)}
               </span>
             </div>
@@ -1519,148 +1528,160 @@ export default function Page() {
           </div>
         )}
       </section>
-
       {/* 3. Live Dashboard Workspace (The Bento Grid) */}
       <section id="dashboard-section" className={`console-dashboard-workspace scroll-reveal ${visibleSections['dashboard-section'] ? 'visible' : ''}`}>        <div className="bento-grid">
           
           {/* Card 1: Video Player & Bounding Overlays (col-span-6) */}
-          <div className="bento-card col-span-6 flex-col player-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 0 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>Video Stream Monitor</h3>
-              <span className="panel-badge-status">
-                {roiSector === "full" ? "FULL FRAME" : `ROI: ${roiSector.toUpperCase()}`}
-              </span>
-            </div>
-            
-            <div className="video-player-viewport animate-fade-in" style={{ position: "relative" }}>
-              {previewUrl ? (
-                <div className="video-positioner" style={{ width: "100%", height: "100%", position: "relative" }}>
-                  {/* Playback HUD Overlay Status */}
-                  <div className="video-player-overlay">
-                    <span className="dot-pulse" style={{ background: isPaused ? "var(--orange)" : "var(--cyan)" }} />
-                    <span>{isPaused ? "Feed Paused" : "Monitoring Feed"}</span>
+          <div className="bento-card-shell col-span-6 player-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 0 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>Video Stream Monitor</h3>
+                <span className="panel-badge-status font-mono">
+                  {roiSector === "full" ? "FULL FRAME" : `ROI: ${roiSector.toUpperCase()}`}
+                </span>
+              </div>
+              
+              <div className="video-player-viewport animate-fade-in" style={{ position: "relative" }}>
+                {previewUrl ? (
+                  <div className="video-positioner" style={{ width: "100%", height: "100%", position: "relative" }}>
+                    {/* Playback HUD Overlay Status */}
+                    <div className="video-player-overlay font-mono">
+                      <span className="dot-pulse" style={{ background: isPaused ? "var(--orange)" : "var(--cyan)" }} />
+                      <span>{isPaused ? "Feed Paused" : "Monitoring Feed"}</span>
+                    </div>
+                    {/* Tactical Corners */}
+                    <div className="hud-bracket hud-bracket-tl" />
+                    <div className="hud-bracket hud-bracket-tr" />
+                    <div className="hud-bracket hud-bracket-bl" />
+                    <div className="hud-bracket hud-bracket-br" />
+                    {/* Tactical Crosshair */}
+                    <div className="hud-crosshair" />
+                    {/* Live Sweep Scan Line */}
+                    {!isPaused && <div className="hud-scan-line" />}
+                    <video
+                      ref={videoRef}
+                      src={previewUrl}
+                      controls
+                      playsInline
+                      muted
+                      onPlay={() => setIsPaused(false)}
+                      onPause={() => setIsPaused(true)}
+                      onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                      onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
+                    />
+                    {/* Spatial ROI Simulated Overlays */}
+                    {roiSector === "center" && (
+                      <>
+                        <div className="roi-mask-dim left-dim" style={{ left: 0, width: "20%" }} />
+                        <div className="roi-mask-dim right-dim" style={{ right: 0, width: "20%" }} />
+                        <div className="roi-overlay-outline center-outline" style={{ left: "20%", width: "60%" }} />
+                      </>
+                    )}
+                    {roiSector === "left" && (
+                      <>
+                        <div className="roi-mask-dim right-dim" style={{ right: 0, width: "50%" }} />
+                        <div className="roi-overlay-outline left-outline" style={{ left: 0, width: "50%" }} />
+                      </>
+                    )}
+                    {roiSector === "right" && (
+                      <>
+                        <div className="roi-mask-dim left-dim" style={{ left: 0, width: "50%" }} />
+                        <div className="roi-overlay-outline right-outline" style={{ right: 0, width: "50%" }} />
+                      </>
+                    )}
                   </div>
-                  <video
-                    ref={videoRef}
-                    src={previewUrl}
-                    controls
-                    playsInline
-                    muted
-                    onPlay={() => setIsPaused(false)}
-                    onPause={() => setIsPaused(true)}
-                    onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                    onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
-                  />
-                  {/* Spatial ROI Simulated Overlays */}
-                  {roiSector === "center" && (
-                    <>
-                      <div className="roi-mask-dim left-dim" style={{ left: 0, width: "20%" }} />
-                      <div className="roi-mask-dim right-dim" style={{ right: 0, width: "20%" }} />
-                      <div className="roi-overlay-outline center-outline" style={{ left: "20%", width: "60%" }} />
-                    </>
-                  )}
-                  {roiSector === "left" && (
-                    <>
-                      <div className="roi-mask-dim right-dim" style={{ right: 0, width: "50%" }} />
-                      <div className="roi-overlay-outline left-outline" style={{ left: 0, width: "50%" }} />
-                    </>
-                  )}
-                  {roiSector === "right" && (
-                    <>
-                      <div className="roi-mask-dim left-dim" style={{ left: 0, width: "50%" }} />
-                      <div className="roi-overlay-outline right-outline" style={{ right: 0, width: "50%" }} />
-                    </>
-                  )}
+                ) : (
+                  <div className="no-video-placeholder">No active video stream</div>
+                )}
+              </div>
+              {/* Playback Fine-Tuning Arrow Seek Buttons */}
+              {previewUrl && (
+                <div className="video-controls-row">
+                  <button
+                    className="player-seek-btn font-mono"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 1.0);
+                      }
+                    }}
+                  >
+                    ◀ -1s
+                  </button>
+                  <button
+                    className="player-seek-btn font-mono"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        if (videoRef.current.paused) {
+                          videoRef.current.play().catch(() => {});
+                        } else {
+                          videoRef.current.pause();
+                        }
+                      }
+                    }}
+                  >
+                    {isPaused ? "PLAY FEED" : "PAUSE FEED"}
+                  </button>
+                  <button
+                    className="player-seek-btn font-mono"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        videoRef.current.currentTime = Math.min(videoDuration, videoRef.current.currentTime + 1.0);
+                      }
+                    }}
+                  >
+                    +1s ▶
+                  </button>
                 </div>
-              ) : (
-                <div className="no-video-placeholder">No active video stream</div>
               )}
             </div>
-            {/* Playback Fine-Tuning Arrow Seek Buttons */}
-            {previewUrl && (
-              <div className="video-controls-row">
-                <button
-                  className="player-seek-btn"
-                  onClick={() => {
-                    if (videoRef.current) {
-                      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 1.0);
-                    }
-                  }}
-                >
-                  ◀ -1s
-                </button>
-                <button
-                  className="player-seek-btn"
-                  onClick={() => {
-                    if (videoRef.current) {
-                      if (videoRef.current.paused) {
-                        videoRef.current.play().catch(() => {});
-                      } else {
-                        videoRef.current.pause();
-                      }
-                    }
-                  }}
-                >
-                  {isPaused ? "PLAY FEED" : "PAUSE FEED"}
-                </button>
-                <button
-                  className="player-seek-btn"
-                  onClick={() => {
-                    if (videoRef.current) {
-                      videoRef.current.currentTime = Math.min(videoDuration, videoRef.current.currentTime + 1.0);
-                    }
-                  }}
-                >
-                  +1s ▶
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Card 2: Anomaly Score Timeline (col-span-6) */}
-          <div className="bento-card col-span-6 flex-col graph-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 1 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>Anomaly Score Timeline</h3>
+          <div className="bento-card-shell col-span-6 graph-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 1 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>Anomaly Score Timeline</h3>
+                {analysis && (
+                  <small className="monospace-filename font-mono">{analysis.analysis.video_name}</small>
+                )}
+              </div>
+              
+              <TimelineChart
+                timeline={analysis?.analysis.timeline ?? null}
+                activeThreshold={activeThreshold}
+                activeAnomalyRegions={activeAnomalyRegions}
+                accent={analysis?.profile.accent ?? "#29d3ff"}
+                currentTime={currentTime}
+                onSeek={(time) => {
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = time;
+                  }
+                }}
+                previewUrl={previewUrl}
+              />
+
+              {/* Anomaly Summary Metrics integrated inside graph card for compact layout */}
               {analysis && (
-                <small className="monospace-filename">{analysis.analysis.video_name}</small>
+                <div className="summary-numbers-strip" style={{ marginTop: "15px", borderTop: "1px solid var(--border)", paddingTop: "15px" }}>
+                  <div className="number-box">
+                    <span>PEAK ANOMALY SCORE</span>
+                    <strong className="font-mono">{activePeakScore.toFixed(3)}</strong>
+                  </div>
+                  <div className="number-box">
+                    <span>PEAK TIMESTAMP</span>
+                    <strong className="font-mono">{activePeakTime.toFixed(2)}s</strong>
+                  </div>
+                  <div className="number-box">
+                    <span>FRAMES SAMPLED</span>
+                    <strong className="font-mono">{analysis.analysis.summary.sampled_frame_count} / {analysis.analysis.summary.raw_frame_count}</strong>
+                  </div>
+                  <div className="number-box">
+                    <span>TEMPORAL CLIPS</span>
+                    <strong className="font-mono">{analysis.analysis.summary.clip_count}</strong>
+                  </div>
+                </div>
               )}
             </div>
-            
-            <TimelineChart
-              timeline={analysis?.analysis.timeline ?? null}
-              activeThreshold={activeThreshold}
-              activeAnomalyRegions={activeAnomalyRegions}
-              accent={analysis?.profile.accent ?? "#29d3ff"}
-              currentTime={currentTime}
-              onSeek={(time) => {
-                if (videoRef.current) {
-                  videoRef.current.currentTime = time;
-                }
-              }}
-              previewUrl={previewUrl}
-            />
-
-            {/* Anomaly Summary Metrics integrated inside graph card for compact layout */}
-            {analysis && (
-              <div className="summary-numbers-strip" style={{ marginTop: "15px", borderTop: "1px solid var(--border)", paddingTop: "15px" }}>
-                <div className="number-box">
-                  <span>PEAK ANOMALY SCORE</span>
-                  <strong>{activePeakScore.toFixed(3)}</strong>
-                </div>
-                <div className="number-box">
-                  <span>PEAK TIMESTAMP</span>
-                  <strong>{activePeakTime.toFixed(2)}s</strong>
-                </div>
-                <div className="number-box">
-                  <span>FRAMES SAMPLED</span>
-                  <strong>{analysis.analysis.summary.sampled_frame_count} / {analysis.analysis.summary.raw_frame_count}</strong>
-                </div>
-                <div className="number-box">
-                  <span>TEMPORAL CLIPS</span>
-                  <strong>{analysis.analysis.summary.clip_count}</strong>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Card 3: Active Alarm Warning HUD (col-span-12) */}
@@ -1692,7 +1713,7 @@ export default function Page() {
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
                 </span>
-                <span className="alarm-text">
+                <span className="alarm-text font-mono">
                   {isCurrentlyAnomalous
                     ? `ANOMALY DETECTED | TIME: ${currentTime.toFixed(2)}s`
                     : "STREAM SECURE | NO ANOMALIES"}
@@ -1703,429 +1724,446 @@ export default function Page() {
           </div>
 
           {/* Card 4: Captured Keyframes (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 2 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>Captured Keyframes</h3>
-            </div>
-            {analysis ? (
-              <div className="evidence-scroller-grid">
-                {analysis.analysis.frames.map((frame) => (
-                  <motion.div
-                    key={`${frame.index}-${frame.timestamp_sec}`}
-                    className="frame-evidence-card"
-                    whileHover={{ scale: 1.03, y: -4 }}
-                    transition={{ type: "spring", stiffness: 350, damping: 20 }}
-                    onClick={() => {
-                      if (videoRef.current) {
-                        videoRef.current.currentTime = frame.timestamp_sec;
-                        videoRef.current.play().catch(() => {});
-                      }
-                    }}
-                  >
-                    <div className="frame-image-wrapper">
-                      <img src={frame.image_data_url} alt={`Frame at ${frame.timestamp_sec}s`} />
-                      <div className="frame-card-overlay">
-                        <span>SEEK FRAME</span>
+          <div className="bento-card-shell col-span-4" onMouseMove={handleCardMouseMove} style={{ "--card-index": 2 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>Captured Keyframes</h3>
+              </div>
+              {analysis ? (
+                <div className="evidence-scroller-grid">
+                  {analysis.analysis.frames.map((frame) => (
+                    <motion.div
+                      key={`${frame.index}-${frame.timestamp_sec}`}
+                      className="frame-evidence-card"
+                      whileHover={{ scale: 1.03, y: -4 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 20 }}
+                      onClick={() => {
+                        if (videoRef.current) {
+                          videoRef.current.currentTime = frame.timestamp_sec;
+                          videoRef.current.play().catch(() => {});
+                        }
+                      }}
+                    >
+                      <div className="frame-image-wrapper">
+                        <img src={frame.image_data_url} alt={`Frame at ${frame.timestamp_sec}s`} />
+                        <div className="frame-card-overlay">
+                          <span className="font-mono">SEEK FRAME</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="frame-caption">
-                      <span>{frame.timestamp_sec.toFixed(2)}s</span>
-                      <strong>Score: {frame.score.toFixed(3)}</strong>
-                      {frame.description && (
-                        <p style={{ fontSize: "10px", color: "var(--cyan)", marginTop: "4px", lineHeight: "1.2" }}>
-                          {frame.description}
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state" style={{ height: "100%", minHeight: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
-                Select a video to display high-anomaly keyframes.
-              </div>
-            )}
+                      <div className="frame-caption font-mono">
+                        <span>{frame.timestamp_sec.toFixed(2)}s</span>
+                        <strong>Score: {frame.score.toFixed(3)}</strong>
+                        {frame.description && (
+                          <p style={{ fontSize: "10px", color: "var(--cyan)", marginTop: "4px", lineHeight: "1.2" }}>
+                            {frame.description}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state" style={{ height: "100%", minHeight: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
+                  Select a video to display high-anomaly keyframes.
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Card 5: Video Selection Panel (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col gallery-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 3 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>Video Selection Panel</h3>
-              <div className="tab-buttons">
-                <button id="tab-btn-gallery" className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Pre-Staged Streams</button>
-                <button id="tab-btn-upload" className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload Video</button>
-              </div>
-            </div>
-
-            {mode === "samples" ? (
-              <div className="gallery-layout flex-1">
-                <div className="gallery-grid">
-                  {samples.map((sample) => (
-                    <button
-                      key={sample.id}
-                      id={`gallery-sample-card-${sample.id}`}
-                      className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
-                      onClick={() => selectSample(sample)}
-                    >
-                      <div className="gallery-thumb-container">
-                        <img src={absoluteApiUrl(sample.thumbnail_url)} alt={sample.title} />
-                        <div className="gallery-card-badge">{sample.dataset}</div>
-                      </div>
-                      <div className="gallery-info">
-                        <b>{sample.title}</b>
-                        <small>{sample.size_mb} MB</small>
-                      </div>
-                    </button>
-                  ))}
+          <div className="bento-card-shell col-span-4 gallery-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 3 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>Video Selection Panel</h3>
+                <div className="tab-buttons">
+                  <button id="tab-btn-gallery" className={mode === "samples" ? "active-tab" : ""} onClick={() => setMode("samples")}>Pre-Staged Streams</button>
+                  <button id="tab-btn-upload" className={mode === "upload" ? "active-tab" : ""} onClick={() => setMode("upload")}>Upload Video</button>
                 </div>
-                {samples.length === 0 && (
-                  <div className="loading-gallery-spinner">
-                    <div className="pulse-loader" />
-                    <span>Contacting serverless registry...</span>
-                  </div>
-                )}
               </div>
-            ) : (
-              <div className="uploader-layout flex-1">
-                {videoFile ? (
-                  <div className="staged-file-card">
-                    <span className="staged-file-icon">📁</span>
-                    <div className="staged-file-name">{videoFile.name}</div>
-                    <div className="staged-file-size">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</div>
-                    <div className="staged-buttons-strip">
+
+              {mode === "samples" ? (
+                <div className="gallery-layout flex-1">
+                  <div className="gallery-grid">
+                    {samples.map((sample) => (
                       <button
-                        id="action-btn-staged-analyze"
-                        className="console-btn-primary"
-                        disabled={loading}
-                        onClick={runLiveAnalysis}
+                        key={sample.id}
+                        id={`gallery-sample-card-${sample.id}`}
+                        className={`gallery-card ${selectedSample?.id === sample.id ? "gallery-selected" : ""}`}
+                        onClick={() => selectSample(sample)}
                       >
-                        Analyze Video
+                        <div className="gallery-thumb-container">
+                          <img src={absoluteApiUrl(sample.thumbnail_url)} alt={sample.title} />
+                          <div className="gallery-card-badge font-mono">{sample.dataset}</div>
+                        </div>
+                        <div className="gallery-info">
+                          <b>{sample.title}</b>
+                          <small className="font-mono">{sample.size_mb} MB</small>
+                        </div>
                       </button>
-                      <button
-                        id="action-btn-staged-clear"
-                        className="console-btn-secondary"
-                        style={{ color: "var(--red)" }}
-                        onClick={() => {
-                          setVideoFile(null);
-                          setPreviewUrl("");
-                          setAnalysis(null);
-                          setError("");
-                        }}
-                      >
-                        Clear
-                      </button>
+                    ))}
+                  </div>
+                  {samples.length === 0 && (
+                    <div className="loading-gallery-spinner">
+                      <div className="pulse-loader" />
+                      <span className="font-mono">Contacting serverless registry...</span>
                     </div>
-                  </div>
-                ) : (
-                  <label className="uploader-dropzone" htmlFor="console-video-upload">
-                    <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
-                    <span className="upload-arrow">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    </span>
-                    <strong>Upload video from device</strong>
-                    <small>MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
-                  </label>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              ) : (
+                <div className="uploader-layout flex-1">
+                  {videoFile ? (
+                    <div className="staged-file-card">
+                      <span className="staged-file-icon">📁</span>
+                      <div className="staged-file-name font-mono">{videoFile.name}</div>
+                      <div className="staged-file-size font-mono">{(videoFile.size / (1024 * 1024)).toFixed(2)} MB</div>
+                      <div className="staged-buttons-strip">
+                        <button
+                          id="action-btn-staged-analyze"
+                          className="console-btn-primary"
+                          disabled={loading}
+                          onClick={runLiveAnalysis}
+                        >
+                          Analyze Video
+                        </button>
+                        <button
+                          id="action-btn-staged-clear"
+                          className="console-btn-secondary"
+                          style={{ color: "var(--red)" }}
+                          onClick={() => {
+                            setVideoFile(null);
+                            setPreviewUrl("");
+                            setAnalysis(null);
+                            setError("");
+                          }}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="uploader-dropzone" htmlFor="console-video-upload">
+                      <input id="console-video-upload" type="file" accept="video/*" onChange={onVideoChange} />
+                      <span className="upload-arrow">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: "28px", height: "28px", display: "inline-block", marginBottom: "8px" }}>
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="17 8 12 3 7 8" />
+                          <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                      </span>
+                      <strong>Upload video from device</strong>
+                      <small className="font-mono">MP4, AVI, MOV, MKV, or WebM - restricted to {health?.max_upload_mb ?? 50} MB</small>
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Card 6: Analysis & Threshold Controls (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 4 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>Analysis & Threshold Controls</h3>
-            </div>
-            
-            <div className="config-grid">
-              <div className="config-item" style={{ marginTop: "4px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                  <label style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>Bypass Feature Cache</label>
-                  <label className="switch" style={{ position: "relative", display: "inline-block", width: "40px", height: "20px" }}>
-                    <input
-                      type="checkbox"
-                      checked={bypassCache}
-                      onChange={(e) => setBypassCache(e.target.checked)}
-                      style={{ opacity: 0, width: 0, height: 0 }}
-                    />
-                    <span className="slider" style={{
-                      position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
-                      backgroundColor: bypassCache ? "var(--cyan)" : "rgba(255, 255, 255, 0.08)",
-                      transition: "0.3s",
-                      borderRadius: "20px",
-                      border: "1px solid rgba(255, 255, 255, 0.15)"
-                    }}>
-                      <span style={{
-                        position: "absolute", content: "''", height: "12px", width: "12px", left: bypassCache ? "22px" : "4px", bottom: "3px",
-                        backgroundColor: "#fff",
+          <div className="bento-card-shell col-span-4" onMouseMove={handleCardMouseMove} style={{ "--card-index": 4 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>Analysis & Threshold Controls</h3>
+              </div>
+              
+              <div className="config-grid">
+                <div className="config-item" style={{ marginTop: "4px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                    <label style={{ margin: 0, fontSize: "0.85rem", color: "var(--muted)" }}>Bypass Feature Cache</label>
+                    <label className="switch" style={{ position: "relative", display: "inline-block", width: "40px", height: "20px" }}>
+                      <input
+                        type="checkbox"
+                        checked={bypassCache}
+                        onChange={(e) => setBypassCache(e.target.checked)}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span className="slider" style={{
+                        position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: bypassCache ? "var(--cyan)" : "rgba(255, 255, 255, 0.08)",
                         transition: "0.3s",
-                        borderRadius: "50%"
-                      }} />
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="config-item">
-                <label>Target Dataset Profile</label>
-                <div className="profile-buttons-group">
-                  {profiles.map((p) => (
-                    <button
-                      key={p.key}
-                      id={`profile-select-btn-${p.key}`}
-                      className={selectedKey === p.key ? "profile-active-btn" : ""}
-                      onClick={() => {
-                        setSelectedKey(p.key);
-                        setAnalysis(null);
-                      }}
-                    >
-                      {p.dataset_name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="config-item">
-                <label>Spatial Crop ROI Sector</label>
-                <div className="sector-select-group">
-                  {["full", "left", "center", "right"].map((sector) => (
-                    <button
-                      key={sector}
-                      id={`roi-sector-btn-${sector}`}
-                      className={roiSector === sector ? "sector-active-btn" : ""}
-                      onClick={() => handleRoiChange(sector)}
-                    >
-                      {sector.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="config-item">
-                <label>Threshold Model Mode</label>
-                <div className="profile-buttons-group" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-                  <button
-                    className={thresholdMode === "percentile" ? "profile-active-btn" : ""}
-                    onClick={() => setThresholdMode("percentile")}
-                  >
-                    Dynamic Percentile
-                  </button>
-                  <button
-                    className={thresholdMode === "probability" ? "profile-active-btn" : ""}
-                    onClick={() => setThresholdMode("probability")}
-                  >
-                    Calibrated Probability
-                  </button>
-                </div>
-              </div>
-
-              {thresholdMode === "percentile" ? (
-                <div className="config-item animate-fade-in">
-                  <div className="slider-header">
-                    <label>Anomaly Sensitivity Cutoff</label>
-                    <span className="slider-value">{thresholdPercentile}th percentile</span>
+                        borderRadius: "20px",
+                        border: "1px solid rgba(255, 255, 255, 0.15)"
+                      }}>
+                        <span style={{
+                          position: "absolute", content: "''", height: "12px", width: "12px", left: bypassCache ? "22px" : "4px", bottom: "3px",
+                          backgroundColor: "#fff",
+                          transition: "0.3s",
+                          borderRadius: "50%"
+                        }} />
+                      </span>
+                    </label>
                   </div>
-                  <input
-                    type="range"
-                    id="sensitivity-threshold-slider"
-                    min="50"
-                    max="99"
-                    value={thresholdPercentile}
-                    onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
-                    className="console-range-slider"
-                    style={{ "--slider-percent": `${(thresholdPercentile - 50) / 49 * 100}%` } as React.CSSProperties}
-                  />
-                  <small className="slider-hint">
-                    Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
-                  </small>
                 </div>
-              ) : (
-                <div className="config-item animate-fade-in">
-                  <div className="slider-header">
-                    <label>Calibrated Anomaly Cutoff</label>
-                    <span className="slider-value">P(anomaly) &ge; {probabilityCutoff.toFixed(2)}</span>
+
+                <div className="config-item">
+                  <label>Target Dataset Profile</label>
+                  <div className="profile-buttons-group">
+                    {profiles.map((p) => (
+                      <button
+                        key={p.key}
+                        id={`profile-select-btn-${p.key}`}
+                        className={selectedKey === p.key ? "profile-active-btn font-mono" : "font-mono"}
+                        onClick={() => {
+                          setSelectedKey(p.key);
+                          setAnalysis(null);
+                        }}
+                      >
+                        {p.dataset_name}
+                      </button>
+                    ))}
                   </div>
-                  <input
-                    type="range"
-                    id="probability-threshold-slider"
-                    min="10"
-                    max="95"
-                    value={Math.round(probabilityCutoff * 100)}
-                    onChange={(e) => setProbabilityCutoff(parseInt(e.target.value) / 100)}
-                    className="console-range-slider"
-                    style={{ "--slider-percent": `${(probabilityCutoff - 0.10) / 0.85 * 100}%` } as React.CSSProperties}
-                  />
-                  <small className="slider-hint">
-                    Uses calibrated GMM output probability. Alarms trigger only when absolute anomaly likelihood is high, preventing false alarms on secure feeds.
-                  </small>
                 </div>
-              )}
 
-              <div className="action-buttons-strip">
-                <button
-                  id="action-btn-analyze"
-                  className="console-btn-primary"
-                  disabled={loading || !selectedProfile || (!selectedSample && !videoFile)}
-                  onClick={runLiveAnalysis}
-                >
-                  <span>{loading ? progressCopy : "Run Live Analysis"}</span>
-                </button>
+                <div className="config-item">
+                  <label>Spatial Crop ROI Sector</label>
+                  <div className="sector-select-group">
+                    {["full", "left", "center", "right"].map((sector) => (
+                      <button
+                        key={sector}
+                        id={`roi-sector-btn-${sector}`}
+                        className={roiSector === sector ? "sector-active-btn font-mono" : "font-mono"}
+                        onClick={() => handleRoiChange(sector)}
+                      >
+                        {sector.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                {analysis && (
-                  <button id="action-btn-export" className="console-btn-secondary" onClick={handleExportJSON}>
-                    Export JSON Telemetry
-                  </button>
+                <div className="config-item">
+                  <label>Threshold Model Mode</label>
+                  <div className="profile-buttons-group" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+                    <button
+                      className={thresholdMode === "percentile" ? "profile-active-btn font-mono" : "font-mono"}
+                      onClick={() => setThresholdMode("percentile")}
+                    >
+                      Dynamic Percentile
+                    </button>
+                    <button
+                      className={thresholdMode === "probability" ? "profile-active-btn font-mono" : "font-mono"}
+                      onClick={() => setThresholdMode("probability")}
+                    >
+                      Calibrated Probability
+                    </button>
+                  </div>
+                </div>
+
+                {thresholdMode === "percentile" ? (
+                  <div className="config-item animate-fade-in">
+                    <div className="slider-header">
+                      <label>Anomaly Sensitivity Cutoff</label>
+                      <span className="slider-value font-mono">{thresholdPercentile}th percentile</span>
+                    </div>
+                    <input
+                      type="range"
+                      id="sensitivity-threshold-slider"
+                      min="50"
+                      max="99"
+                      value={thresholdPercentile}
+                      onChange={(e) => setThresholdPercentile(parseInt(e.target.value))}
+                      className="console-range-slider"
+                      style={{ "--slider-percent": `${(thresholdPercentile - 50) / 49 * 100}%` } as React.CSSProperties}
+                    />
+                    <small className="slider-hint">
+                      Higher percentiles restrict anomaly warnings to peaks. Lower percentiles increase trigger rate.
+                    </small>
+                  </div>
+                ) : (
+                  <div className="config-item animate-fade-in">
+                    <div className="slider-header">
+                      <label>Calibrated Anomaly Cutoff</label>
+                      <span className="slider-value font-mono">P(anomaly) &ge; {probabilityCutoff.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      id="probability-threshold-slider"
+                      min="10"
+                      max="95"
+                      value={Math.round(probabilityCutoff * 100)}
+                      onChange={(e) => setProbabilityCutoff(parseInt(e.target.value) / 100)}
+                      className="console-range-slider"
+                      style={{ "--slider-percent": `${(probabilityCutoff - 0.10) / 0.85 * 100}%` } as React.CSSProperties}
+                    />
+                    <small className="slider-hint">
+                      Uses calibrated GMM output probability. Alarms trigger only when absolute anomaly likelihood is high, preventing false alarms on secure feeds.
+                    </small>
+                  </div>
                 )}
-              </div>
 
-              {loading && (
-                <div className="live-loading-hud">
-                  <div className="loading-spinner-circle" />
-                  <span>Inference active. Elapsed: {loadingSeconds}s. Cold GPUs can take 35s to bootstrap.</span>
+                <div className="action-buttons-strip">
+                  <button
+                    id="action-btn-analyze"
+                    className="console-btn-primary"
+                    disabled={loading || !selectedProfile || (!selectedSample && !videoFile)}
+                    onClick={runLiveAnalysis}
+                  >
+                    <span className="font-mono">{loading ? progressCopy : "Run Live Analysis"}</span>
+                  </button>
+
+                  {analysis && (
+                    <button id="action-btn-export" className="console-btn-secondary font-mono" onClick={handleExportJSON}>
+                      Export JSON Telemetry
+                    </button>
+                  )}
                 </div>
-              )}
-              {error && <div className="console-error-banner">{error}</div>}
+
+                {loading && (
+                  <div className="live-loading-hud font-mono">
+                    <div className="loading-spinner-circle" />
+                    <span>Inference active. Elapsed: {loadingSeconds}s. Cold GPUs can take 35s to bootstrap.</span>
+                  </div>
+                )}
+                {error && <div className="console-error-banner font-mono">{error}</div>}
+              </div>
             </div>
           </div>
 
           {/* Card 7: System Telemetry & Logs HUD (col-span-8) */}
-          <div className="bento-card col-span-8 flex-col profiler-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 5 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>System Telemetry & Logs</h3>
-              {analysis && (
-                <span className={`hud-badge ${cacheStatus === "cached" ? "badge-green" : cacheStatus === "fallback" ? "badge-orange" : "badge-green"}`}>
-                  {cacheStatus === "cached" ? "Local Cache" : cacheStatus === "fallback" ? "Cached Backup" : "Live GPU execution"}
-                </span>
-              )}
-            </div>
-            
-            {analysis ? (
-              <div className="hud-stats-row" style={{ marginBottom: "15px" }}>
-                <div className="hud-stat-box">
-                  <span>HARDWARE DEVICE</span>
-                  <strong>{cacheStatus === "cached" ? "Client Cache" : cacheStatus === "fallback" ? "Cached Fallback" : "NVIDIA T4 GPU"}</strong>
-                </div>
-                <div className="hud-stat-box">
-                  <span>ANALYSIS LATENCY</span>
-                  <strong>{cacheStatus === "cached" || cacheStatus === "fallback" ? "0ms" : `${analysis.analysis.runtime_sec.toFixed(2)}s`}</strong>
-                </div>
-                <div className="hud-stat-box">
-                  <span>PROCESSING SPEED</span>
-                  <strong>
-                    {analysis.analysis.runtime_sec > 0
-                      ? `${(analysis.analysis.summary.sampled_frame_count / analysis.analysis.runtime_sec).toFixed(1)} FPS`
-                      : "N/A"}
-                  </strong>
-                </div>
-                <div className="hud-stat-box">
-                  <span>EMBEDDING TYPE</span>
-                  <strong>VideoMAE [768d]</strong>
-                </div>
+          <div className="bento-card-shell col-span-8 profiler-bento-card" onMouseMove={handleCardMouseMove} style={{ "--card-index": 5 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>System Telemetry & Logs</h3>
+                {analysis && (
+                  <span className={`hud-badge font-mono ${cacheStatus === "cached" ? "badge-green" : cacheStatus === "fallback" ? "badge-orange" : "badge-green"}`}>
+                    {cacheStatus === "cached" ? "Local Cache" : cacheStatus === "fallback" ? "Cached Backup" : "Live GPU execution"}
+                  </span>
+                )}
               </div>
-            ) : (
-              <div className="no-telemetry-placeholder" style={{ marginBottom: "15px" }}>
-                Pipeline inactive. Select a video to view performance telemetry.
-              </div>
-            )}
-
-            <div className="live-stream-logs flex-1" ref={logsContainerRef} style={{ minHeight: "150px", maxHeight: "250px", overflowY: "auto", background: "rgba(10, 15, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "10px", fontFamily: "monospace", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
-               {logs.length > 0 ? (
-                logs.map((log, index) => {
-                  if (!log) return null;
-                  const logStr = String(log);
-                  let logClass = "log-info";
-                  if (logStr.toLowerCase().includes("failed") || logStr.toLowerCase().includes("error")) {
-                    logClass = "log-danger";
-                  } else if (logStr.toLowerCase().includes("warning") || logStr.toLowerCase().includes("idle")) {
-                    logClass = "log-warning";
-                  }
-                  return (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
-                      style={{ display: "flex", gap: "6px" }}
-                    >
-                      <span className="log-timestamp" style={{ color: "rgba(255,255,255,0.3)" }}>[{new Date().toLocaleTimeString()}]</span>
-                      <span className={logClass}>{log}</span>
-                    </motion.div>
-                  );
-                })
+              
+              {analysis ? (
+                <div className="hud-stats-row font-mono" style={{ marginBottom: "15px" }}>
+                  <div className="hud-stat-box">
+                    <span>HARDWARE DEVICE</span>
+                    <strong>{cacheStatus === "cached" ? "Client Cache" : cacheStatus === "fallback" ? "Cached Fallback" : "NVIDIA T4 GPU"}</strong>
+                  </div>
+                  <div className="hud-stat-box">
+                    <span>ANALYSIS LATENCY</span>
+                    <strong>{cacheStatus === "cached" || cacheStatus === "fallback" ? "0ms" : `${analysis.analysis.runtime_sec.toFixed(2)}s`}</strong>
+                  </div>
+                  <div className="hud-stat-box">
+                    <span>PROCESSING SPEED</span>
+                    <strong>
+                      {analysis.analysis.runtime_sec > 0
+                        ? `${(analysis.analysis.summary.sampled_frame_count / analysis.analysis.runtime_sec).toFixed(1)} FPS`
+                        : "N/A"}
+                    </strong>
+                  </div>
+                  <div className="hud-stat-box">
+                    <span>EMBEDDING TYPE</span>
+                    <strong>VideoMAE [768d]</strong>
+                  </div>
+                </div>
               ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{ color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}
-                >
-                  Console idle. Run analysis to start logging events...
-                </motion.div>
+                <div className="no-telemetry-placeholder font-mono" style={{ marginBottom: "15px" }}>
+                  Pipeline inactive. Select a video to view performance telemetry.
+                </div>
               )}
+
+              <div className="live-stream-logs flex-1 font-mono" ref={logsContainerRef} style={{ minHeight: "150px", maxHeight: "250px", overflowY: "auto", background: "rgba(10, 15, 20, 0.8)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px", padding: "10px", fontSize: "11px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                 {logs.length > 0 ? (
+                  logs.map((log, index) => {
+                    if (!log) return null;
+                    const logStr = String(log);
+                    let logClass = "log-info";
+                    if (logStr.toLowerCase().includes("failed") || logStr.toLowerCase().includes("error")) {
+                      logClass = "log-danger";
+                    } else if (logStr.toLowerCase().includes("warning") || logStr.toLowerCase().includes("idle")) {
+                      logClass = "log-warning";
+                    }
+                    return (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                        style={{ display: "flex", gap: "6px" }}
+                      >
+                        <span className="log-timestamp" style={{ color: "rgba(255,255,255,0.3)" }}>[{new Date().toLocaleTimeString()}]</span>
+                        <span className={logClass}>{log}</span>
+                      </motion.div>
+                    );
+                  })
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    style={{ color: "rgba(255,255,255,0.25)", fontStyle: "italic" }}
+                  >
+                    Console idle. Run analysis to start logging events...
+                  </motion.div>
+                )}
+                {logs.length > 0 && (
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <span className="log-timestamp" style={{ color: "rgba(255,255,255,0.3)" }}>[{new Date().toLocaleTimeString()}]</span>
+                    <span className="log-level-sys" style={{ color: "var(--mint)", fontWeight: "bold" }}>SYSTEM ACTIVE</span>
+                    <span className="terminal-cursor" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Card 8: Anomaly Alert Events (col-span-4) */}
-          <div className="bento-card col-span-4 flex-col" onMouseMove={handleCardMouseMove} style={{ "--card-index": 6 } as React.CSSProperties}>
-            <div className="bento-card-header">
-              <h3>Anomaly Alert Events</h3>
-              {analysis && <small>{activeAnomalyRegions.length} alerts</small>}
-            </div>
-            {analysis ? (
-              <div className="log-table-container">
-                <table className="log-table">
-                  <thead>
-                    <tr>
-                      <th>ALERT INTERVAL</th>
-                      <th>PEAK</th>
-                      <th>ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeAnomalyRegions.map((region, index) => {
-                      const regionScores = analysis.analysis.timeline.scores.slice(region.start_index, region.end_index + 1);
-                      const peakVal = regionScores.length ? Math.max(...regionScores) : 0;
-                      return (
-                        <tr key={index}>
-                          <td className="monospace-cell">
-                            {region.start_time_sec.toFixed(1)}s - {region.end_time_sec.toFixed(1)}s
-                          </td>
-                          <td className="monospace-cell font-bold" style={{ color: "var(--cyan)" }}>
-                            {peakVal.toFixed(2)}
-                          </td>
-                          <td>
-                            <button
-                              className="seek-log-btn"
-                              onClick={() => {
-                                if (videoRef.current) {
-                                  videoRef.current.currentTime = region.start_time_sec;
-                                  videoRef.current.play().catch(() => {});
-                                }
-                              }}
-                            >
-                              SEEK
-                            </button>
+          <div className="bento-card-shell col-span-4" onMouseMove={handleCardMouseMove} style={{ "--card-index": 6 } as React.CSSProperties}>
+            <div className="bento-card flex-col">
+              <div className="bento-card-header">
+                <h3>Anomaly Alert Events</h3>
+                {analysis && <small className="font-mono">{activeAnomalyRegions.length} alerts</small>}
+              </div>
+              {analysis ? (
+                <div className="log-table-container">
+                  <table className="log-table">
+                    <thead>
+                      <tr>
+                        <th className="font-mono">ALERT INTERVAL</th>
+                        <th className="font-mono">PEAK</th>
+                        <th className="font-mono">ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeAnomalyRegions.map((region, index) => {
+                        const regionScores = analysis.analysis.timeline.scores.slice(region.start_index, region.end_index + 1);
+                        const peakVal = regionScores.length ? Math.max(...regionScores) : 0;
+                        return (
+                          <tr key={index}>
+                            <td className="monospace-cell font-mono">
+                              {region.start_time_sec.toFixed(1)}s - {region.end_time_sec.toFixed(1)}s
+                            </td>
+                            <td className="monospace-cell font-bold font-mono" style={{ color: "var(--cyan)" }}>
+                              {peakVal.toFixed(2)}
+                            </td>
+                            <td>
+                              <button
+                                className="seek-log-btn font-mono"
+                                onClick={() => {
+                                  if (videoRef.current) {
+                                    videoRef.current.currentTime = region.start_time_sec;
+                                    videoRef.current.play().catch(() => {});
+                                  }
+                                }}
+                              >
+                                SEEK
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {activeAnomalyRegions.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="empty-log-cell font-mono">
+                            No exceptions flagged under current sensitivity threshold.
                           </td>
                         </tr>
-                      );
-                    })}
-                    {activeAnomalyRegions.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="empty-log-cell">
-                          No exceptions flagged under current sensitivity threshold.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="empty-state" style={{ height: "100%", minHeight: "180px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
-                Select a video to view alert logs.
-              </div>
-            )}
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state font-mono" style={{ height: "100%", minHeight: "180px", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "0.85rem" }}>
+                  Select a video to view alert logs.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>
