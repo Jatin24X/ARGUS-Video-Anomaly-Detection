@@ -644,6 +644,23 @@ async function generatePlaceholderHeatmap(videoUrl: string, timestamp: number, i
     tempVideo.playsInline = true;
     tempVideo.currentTime = timestamp;
 
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+    }, 5000);
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      tempVideo.onseeked = null;
+      tempVideo.onerror = null;
+      try {
+        tempVideo.pause();
+        tempVideo.removeAttribute("src");
+        tempVideo.load();
+      } catch (e) {}
+      tempVideo.remove();
+    };
+
     tempVideo.onseeked = () => {
       try {
         const canvas = document.createElement("canvas");
@@ -653,6 +670,7 @@ async function generatePlaceholderHeatmap(videoUrl: string, timestamp: number, i
         canvas.height = h;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
+          cleanup();
           resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
           return;
         }
@@ -698,13 +716,13 @@ async function generatePlaceholderHeatmap(videoUrl: string, timestamp: number, i
       } catch (err) {
         resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
       } finally {
-        tempVideo.remove();
+        cleanup();
       }
     };
 
     tempVideo.onerror = () => {
       resolve("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
-      tempVideo.remove();
+      cleanup();
     };
 
     tempVideo.load();
@@ -1041,29 +1059,42 @@ export default function Page() {
           "[SYSTEM] High-fidelity visualization payload compiled."
         ]);
 
-        // Dynamic canvas fallback for cached mode (resolves placeholder GIFs)
-        const videoUrl = absoluteApiUrl(selectedSample ? selectedSample.video_url : "/static_videos/Avenue-1.mp4");
+        // Sequential canvas fallback for cached mode (resolves placeholder GIFs progressively)
+        const targetSample = samples.find((s) => s.id === sampleId) || selectedSample;
+        const videoUrl = absoluteApiUrl(targetSample ? targetSample.video_url : "/static_videos/Avenue-1.mp4");
         
-        Promise.all(payload.analysis.frames.map(async (frame) => {
-          if (frame.image_data_url.startsWith("data:image/gif;base64,")) {
-            const threshold = payload.analysis.timeline.threshold || 0.5;
-            const isAnomalous = frame.score >= threshold;
-            const dataUrl = await generatePlaceholderHeatmap(videoUrl, frame.timestamp_sec, isAnomalous);
-            return { ...frame, image_data_url: dataUrl };
+        (async () => {
+          const threshold = payload.analysis.timeline.threshold || 0.5;
+          const updatedFrames = [...payload.analysis.frames];
+          for (let i = 0; i < updatedFrames.length; i++) {
+            const frame = updatedFrames[i];
+            if (frame.image_data_url.startsWith("data:image/gif;base64,")) {
+              const isAnomalous = frame.score >= threshold;
+              try {
+                const dataUrl = await generatePlaceholderHeatmap(videoUrl, frame.timestamp_sec, isAnomalous);
+                updatedFrames[i] = { ...frame, image_data_url: dataUrl };
+                
+                // Update state progressively so the user sees keyframes load in real-time
+                setAnalysis((prev) => {
+                  if (!prev) return null;
+                  const currentFrames = [...prev.analysis.frames];
+                  if (currentFrames[i]) {
+                    currentFrames[i] = { ...currentFrames[i], image_data_url: dataUrl };
+                  }
+                  return {
+                    ...prev,
+                    analysis: {
+                      ...prev.analysis,
+                      frames: currentFrames,
+                    },
+                  };
+                });
+              } catch (err) {
+                console.warn("Failed to generate placeholder heatmap for frame index", frame.index, err);
+              }
+            }
           }
-          return frame;
-        })).then((updatedFrames) => {
-          setAnalysis((prev) => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              analysis: {
-                ...prev.analysis,
-                frames: updatedFrames,
-              },
-            };
-          });
-        });
+        })();
 
         return true;
       }
